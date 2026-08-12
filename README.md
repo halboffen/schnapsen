@@ -1,5 +1,7 @@
 # Schnapsen-Trainer
 
+### ▶ [Jetzt spielen: halboffen.github.io/schnapsen](https://halboffen.github.io/schnapsen/)
+
 Du spielst ein Bummerl gegen den Computer, und nach **jedem** deiner Züge sagt
 dir ein Trainer, wie gut der Zug war, was besser gewesen wäre und **warum**.
 
@@ -8,13 +10,9 @@ Es gibt zwei Varianten mit derselben Engine und denselben Hinweisen:
 ## Browser – [`index.html`](index.html)
 
 Eine einzige, in sich geschlossene HTML-Datei: keine Bibliotheken, kein Build,
-kein Server, keine Netzwerkzugriffe. Doppelklick genügt.
-
-Zum Hosten auf GitHub Pages reicht es, die Datei ins Repository zu legen und
-unter *Settings → Pages* die Quelle auf den Branch (Ordner `/`) zu stellen –
-oder die Datei nach `docs/index.html` zu verschieben und `/docs` zu wählen.
-Spiellogik, Gegner und Trainer laufen komplett im Browser; es wird nichts
-gesendet und nichts gespeichert.
+kein Server, keine Netzwerkzugriffe, keine Cookies, kein Tracking. Spiellogik,
+Gegner und Trainer laufen komplett im Browser – die Seite funktioniert auch
+offline, wenn man die Datei einmal gespeichert hat.
 
 ## Terminal – `play.py`
 
