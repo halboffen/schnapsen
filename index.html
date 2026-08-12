@@ -1,0 +1,1169 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Schnapsen-Trainer</title>
+<meta name="description" content="Schnapsen gegen den Computer – mit Trainer-Analyse zu jedem Zug.">
+<style>
+:root{
+  --bg:#f4f1ea; --fg:#1c1a17; --muted:#6b6459; --line:#ddd6c8;
+  --panel:#fffdf8; --panel2:#f0ece1;
+  --felt1:#2c7156; --felt2:#14402f; --felt-line:rgba(255,255,255,.09);
+  --gold:#c9a227; --good:#2f8f4e; --warn:#c08a1e; --bad:#c0442f;
+  --shadow:0 2px 6px rgba(0,0,0,.14), 0 10px 24px rgba(0,0,0,.10);
+  --radius:14px;
+  --card-w:64px; --card-h:92px;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#15171a; --fg:#e9e6df; --muted:#9a958c; --line:#2c2f34;
+    --panel:#1d2024; --panel2:#23272c;
+    --felt1:#23604a; --felt2:#0d2b20;
+    --shadow:0 2px 6px rgba(0,0,0,.45), 0 12px 28px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="light"]{
+  --bg:#f4f1ea; --fg:#1c1a17; --muted:#6b6459; --line:#ddd6c8;
+  --panel:#fffdf8; --panel2:#f0ece1; --felt1:#2c7156; --felt2:#14402f;
+  --shadow:0 2px 6px rgba(0,0,0,.14), 0 10px 24px rgba(0,0,0,.10);
+}
+:root[data-theme="dark"]{
+  --bg:#15171a; --fg:#e9e6df; --muted:#9a958c; --line:#2c2f34;
+  --panel:#1d2024; --panel2:#23272c; --felt1:#23604a; --felt2:#0d2b20;
+  --shadow:0 2px 6px rgba(0,0,0,.45), 0 12px 28px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--fg);
+  font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  -webkit-text-size-adjust:100%;
+}
+button{font:inherit;color:inherit}
+h1,h2,h3{margin:0;font-weight:650;letter-spacing:-.01em}
+
+/* ---------------------------------------------------------------- Kopfzeile */
+header{
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  padding:10px 16px;border-bottom:1px solid var(--line);background:var(--panel);
+  position:sticky;top:0;z-index:30;
+}
+.brand{font-weight:700;font-size:16px;letter-spacing:-.02em;white-space:nowrap}
+.brand span{color:var(--gold)}
+.spacer{flex:1}
+.pips{display:flex;gap:9px;align-items:center;font-variant-numeric:tabular-nums}
+.pipset{display:flex;gap:2px}
+.pip{width:9px;height:9px;border-radius:50%;background:var(--line)}
+.pip.on{background:var(--gold)}
+.pipset.me .pip.on{background:var(--good)}
+.tag{
+  font-size:12px;color:var(--muted);border:1px solid var(--line);
+  border-radius:999px;padding:3px 10px;white-space:nowrap;
+}
+.btn{
+  border:1px solid var(--line);background:var(--panel2);
+  border-radius:9px;padding:6px 12px;cursor:pointer;font-size:13px;
+  transition:.15s background,.15s border-color,.15s transform;
+}
+.btn:hover{border-color:var(--gold)}
+.btn:active{transform:translateY(1px)}
+.btn.primary{background:var(--gold);border-color:var(--gold);color:#1c1a17;font-weight:600}
+select.btn{padding:6px 8px}
+
+/* ------------------------------------------------------------------- Layout */
+main{
+  display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px;
+  padding:16px;max-width:1240px;margin:0 auto;align-items:start;
+}
+@media (max-width:960px){ main{grid-template-columns:1fr} }
+
+/* --------------------------------------------------------------------- Tisch */
+.felt{
+  position:relative;border-radius:20px;padding:14px;
+  background:
+    radial-gradient(120% 90% at 50% 0%, var(--felt1), var(--felt2) 78%);
+  box-shadow:inset 0 0 0 1px var(--felt-line), var(--shadow);
+  min-height:520px;display:flex;flex-direction:column;gap:8px;color:#eef5f1;
+}
+.felt::after{
+  content:"";position:absolute;inset:8px;border-radius:14px;
+  border:1px solid rgba(255,255,255,.07);pointer-events:none;
+}
+.row{display:flex;align-items:center;justify-content:center;gap:8px;position:relative}
+.zone-top{min-height:100px}
+.zone-mid{flex:1;min-height:150px;gap:26px}
+.zone-bot{min-height:120px;flex-direction:column;gap:10px}
+.seat{
+  position:absolute;left:12px;top:50%;transform:translateY(-50%);
+  font-size:12px;color:rgba(255,255,255,.72);text-align:left;line-height:1.35;
+}
+.seat b{display:block;font-size:13px;color:#fff}
+.pts{font-variant-numeric:tabular-nums}
+
+/* --------------------------------------------------------------------- Karte */
+.card{
+  width:var(--card-w);height:var(--card-h);border-radius:8px;
+  background:linear-gradient(#fff,#f6f3ec);color:#16171a;
+  box-shadow:0 1px 2px rgba(0,0,0,.3),0 6px 14px rgba(0,0,0,.28);
+  position:relative;flex:0 0 auto;user-select:none;
+  display:flex;align-items:center;justify-content:center;
+  transition:transform .18s ease, box-shadow .18s ease, opacity .18s;
+  border:1px solid rgba(0,0,0,.12);
+}
+.card .idx{position:absolute;top:4px;left:6px;font-size:13px;font-weight:700;line-height:1.05;text-align:center}
+.card .idx small{display:block;font-size:12px;margin-top:-1px}
+.card .idx.b{top:auto;left:auto;bottom:4px;right:6px;transform:rotate(180deg)}
+.card .mid{font-size:30px;line-height:1}
+.card.red{color:#c02b2b}
+.card.back{
+  background:
+    repeating-linear-gradient(45deg,#2a4d7a 0 6px,#25436b 6px 12px);
+  border:1px solid rgba(0,0,0,.35);
+}
+.card.back::after{
+  content:"";position:absolute;inset:5px;border-radius:5px;
+  border:1px solid rgba(255,255,255,.25);
+}
+.hand{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.hand .card{cursor:default}
+.hand .card.playable{cursor:pointer}
+.hand .card.playable:hover{transform:translateY(-10px);box-shadow:0 10px 20px rgba(0,0,0,.35)}
+.hand .card.dim{opacity:.42;filter:saturate(.5)}
+.hand .card.glow{outline:2px solid var(--gold);outline-offset:2px}
+.card .ev{
+  position:absolute;bottom:-9px;left:50%;transform:translateX(-50%);
+  font-size:11px;font-variant-numeric:tabular-nums;padding:1px 6px;border-radius:999px;
+  background:#111;color:#fff;opacity:.85;white-space:nowrap;
+}
+.card .ev.best{background:var(--gold);color:#1c1a17;font-weight:700;opacity:1}
+@keyframes deal{from{opacity:0;transform:translateY(-26px) scale(.9) rotate(-6deg)}to{opacity:1}}
+.card.anim{animation:deal .28s ease both}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+.shake{animation:shake .28s}
+
+/* ---------------------------------------------------------------- Stichfeld */
+.trick{display:flex;gap:14px;align-items:center;justify-content:center;min-height:var(--card-h)}
+.slot{
+  width:var(--card-w);height:var(--card-h);border-radius:8px;
+  border:1px dashed rgba(255,255,255,.2);
+}
+.trickcard{position:relative}
+.trickcard .who{
+  position:absolute;top:-18px;left:50%;transform:translateX(-50%);
+  font-size:11px;color:rgba(255,255,255,.8);white-space:nowrap;
+}
+.stock{display:flex;align-items:center;gap:10px}
+.stockpile{position:relative;width:calc(var(--card-w) + 26px);height:var(--card-h)}
+.stockpile .card{position:absolute;top:0;left:26px}
+.stockpile .trumpcard{
+  position:absolute;top:calc(var(--card-h)/2 - var(--card-w)/2);
+  left:calc(-1 * (var(--card-h) - var(--card-w))/2 + 2px);
+  transform:rotate(90deg);
+}
+.stocklabel{font-size:12px;color:rgba(255,255,255,.75);text-align:center;margin-top:4px}
+.closedmark{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:700;color:#fff;background:rgba(0,0,0,.45);
+  border-radius:8px;left:26px;width:var(--card-w);
+}
+
+/* ---------------------------------------------------------------- Aktionen */
+.chips{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;min-height:32px}
+.chip{
+  border:1px solid rgba(255,255,255,.28);background:rgba(255,255,255,.1);
+  color:#fff;border-radius:999px;padding:5px 13px;font-size:13px;cursor:pointer;
+  backdrop-filter:blur(3px);position:relative;transition:.15s;
+}
+.chip:hover{background:rgba(255,255,255,.2)}
+.chip.gold{border-color:var(--gold);background:rgba(201,162,39,.24)}
+.chip.danger{border-color:#e08a7a}
+.chip .ev{bottom:-10px}
+.hintline{font-size:12px;color:rgba(255,255,255,.72);text-align:center;min-height:18px}
+
+/* --------------------------------------------------------------- Seitenpanel */
+aside{display:flex;flex-direction:column;gap:12px;position:sticky;top:64px}
+@media (max-width:960px){ aside{position:static} }
+.panel{
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+  padding:14px;box-shadow:var(--shadow);
+}
+.panel h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:8px}
+.verdict{display:flex;align-items:center;gap:9px;margin-bottom:6px}
+.badge{
+  width:26px;height:26px;border-radius:50%;display:grid;place-items:center;
+  font-weight:700;color:#fff;flex:0 0 auto;font-size:15px;
+}
+.badge.good{background:var(--good)} .badge.mid{background:var(--warn)} .badge.bad{background:var(--bad)}
+.vtitle{font-weight:650}
+.vval{margin-left:auto;font-variant-numeric:tabular-nums;color:var(--muted);font-size:13px}
+.better{font-size:13px;background:var(--panel2);border-radius:8px;padding:7px 10px;margin:6px 0}
+.tips{margin:8px 0 0;padding-left:18px;font-size:13.5px;color:var(--fg)}
+.tips li{margin:6px 0}
+.count{
+  margin-top:10px;font-size:12.5px;color:var(--muted);
+  border-top:1px solid var(--line);padding-top:8px;font-variant-numeric:tabular-nums;
+}
+.meter{height:6px;border-radius:3px;background:var(--panel2);overflow:hidden;margin-top:5px}
+.meter i{display:block;height:100%;background:var(--good)}
+.meter.opp i{background:var(--bad)}
+.memo{font-size:13px;line-height:1.9}
+.memo .s{display:inline-block;min-width:1.4em;color:var(--muted)}
+.mc{
+  display:inline-block;padding:1px 5px;margin:0 2px 2px 0;border-radius:5px;
+  background:var(--panel2);border:1px solid var(--line);font-variant-numeric:tabular-nums;
+}
+.mc.red{color:#c02b2b}
+.mc.tr{border-color:var(--gold)}
+.log{max-height:170px;overflow:auto;font-size:12.5px;color:var(--muted);line-height:1.7}
+.log b{color:var(--fg);font-weight:600}
+.statline{font-size:12.5px;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap}
+.statline b{color:var(--fg)}
+
+/* ------------------------------------------------------------------- Dialog */
+dialog{
+  border:1px solid var(--line);border-radius:var(--radius);background:var(--panel);
+  color:var(--fg);max-width:640px;width:calc(100% - 32px);padding:0;box-shadow:var(--shadow);
+}
+dialog::backdrop{background:rgba(0,0,0,.55)}
+.dlg-head{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line)}
+.dlg-body{padding:16px;max-height:70vh;overflow:auto;font-size:14px}
+.dlg-body h3{margin:16px 0 6px;font-size:14px;color:var(--gold)}
+.dlg-body h3:first-child{margin-top:0}
+.dlg-body ul{margin:6px 0;padding-left:20px}
+.dlg-body li{margin:5px 0}
+.dlg-body table{border-collapse:collapse;width:100%;font-size:13px;margin:8px 0}
+.dlg-body td{padding:3px 6px;border-bottom:1px solid var(--line)}
+.result{text-align:center;padding:22px 16px}
+.result .big{font-size:24px;font-weight:700;margin-bottom:4px}
+.result .sub{color:var(--muted);font-size:14px}
+.busy{opacity:.55;pointer-events:none}
+.thinking{
+  position:absolute;top:10px;right:14px;font-size:12px;color:rgba(255,255,255,.8);
+  display:none;align-items:center;gap:6px;
+}
+.thinking.on{display:flex}
+.dot{width:6px;height:6px;border-radius:50%;background:#fff;animation:blink 1s infinite}
+.dot:nth-child(2){animation-delay:.2s}.dot:nth-child(3){animation-delay:.4s}
+@keyframes blink{0%,100%{opacity:.25}50%{opacity:1}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">Schnapsen<span>·</span>Trainer</div>
+  <div class="pips" title="Bummerl – wer zuerst bei 0 ist, gewinnt">
+    <span class="tag" id="bummerlTag">7 : 7</span>
+    <span class="pipset me" id="pipsMe"></span>
+    <span class="pipset" id="pipsOpp"></span>
+  </div>
+  <span class="tag" id="trumpTag">Trumpf –</span>
+  <div class="spacer"></div>
+  <select class="btn" id="level" title="Spielstärke des Gegners">
+    <option value="leicht">leicht</option>
+    <option value="normal" selected>normal</option>
+    <option value="schwer">schwer</option>
+  </select>
+  <button class="btn" id="btnRules">Regeln</button>
+  <button class="btn" id="btnStrat">Strategie</button>
+  <button class="btn primary" id="btnNew">Neues Bummerl</button>
+</header>
+
+<main>
+  <section class="felt" id="felt">
+    <div class="thinking" id="thinking"><span>Gegner denkt</span><i class="dot"></i><i class="dot"></i><i class="dot"></i></div>
+
+    <div class="row zone-top">
+      <div class="seat"><b>Gegner</b><span class="pts" id="oppPts">0 Augen</span></div>
+      <div class="hand" id="oppHand"></div>
+    </div>
+
+    <div class="row zone-mid">
+      <div class="trick" id="trick"></div>
+      <div class="stock">
+        <div>
+          <div class="stockpile" id="stockpile"></div>
+          <div class="stocklabel" id="stockLabel">Talon</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row zone-bot">
+      <div class="seat"><b>Du</b><span class="pts" id="myPts">0 Augen</span></div>
+      <div class="chips" id="chips"></div>
+      <div class="hand" id="myHand"></div>
+      <div class="hintline" id="hintline"></div>
+    </div>
+  </section>
+
+  <aside>
+    <div class="panel" id="coachPanel">
+      <h2>Trainer</h2>
+      <div id="coachBody"><div style="color:var(--muted);font-size:13.5px">
+        Spiel eine Karte – hier steht dann, wie gut der Zug war und warum.
+      </div></div>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button class="btn" id="btnHint" style="flex:1">Hinweis anzeigen</button>
+        <button class="btn" id="btnCoach" title="Trainer-Kommentar an/aus">An</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Merkhilfe – noch unbekannt</h2>
+      <div class="memo" id="memo"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Verlauf</h2>
+      <div class="log" id="log"></div>
+      <div class="statline" id="stats" style="margin-top:8px"></div>
+    </div>
+  </aside>
+</main>
+
+<dialog id="dlg"><div class="dlg-head"><h2 id="dlgTitle"></h2><div class="spacer"></div>
+  <button class="btn" onclick="document.getElementById('dlg').close()">Schließen</button></div>
+  <div class="dlg-body" id="dlgBody"></div></dialog>
+
+<dialog id="dlgResult"><div class="result" id="resultBody"></div></dialog>
+
+<script>
+"use strict";
+/* ==========================================================================
+   1. Karten
+   ========================================================================== */
+const SUIT_SYM=["♥","♦","♠","♣"], SUIT_NAME=["Herz","Karo","Pik","Treff"];
+const SUIT_RED=[true,true,false,false];
+const RANKS=["A","10","K","D","B"], RANK_NAME=["Ass","Zehn","König","Dame","Bube"];
+const VAL=[11,10,4,3,2], ORD=[4,3,2,1,0];
+const R_A=0,R_10=1,R_K=2,R_D=3,R_B=4;
+const suitOf=c=>(c/5)|0, rankOf=c=>c%5;
+const valOf=c=>VAL[c%5], ordOf=c=>ORD[c%5];
+const mk=(r,s)=>s*5+r;
+const cardStr=c=>RANKS[c%5]+SUIT_SYM[(c/5)|0];
+const bit=c=>1<<c;
+const ALL_MASK=(1<<20)-1;
+const beats=(ch,led,tr)=> suitOf(ch)===suitOf(led) ? ordOf(ch)>ordOf(led) : suitOf(ch)===tr;
+
+/* Zufall: seedbar, damit Partien reproduzierbar sind */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
+  t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+let rnd=mulberry32((Math.random()*1e9)|0);
+const rint=n=>(rnd()*n)|0;
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=rint(i+1);const t=a[i];a[i]=a[j];a[j]=t;}return a;}
+
+/* ==========================================================================
+   2. Regeln  (Portierung von rules.py)
+   ========================================================================== */
+const M_EXCH=200, M_CLOSE=201;
+const mMarr=(suit,leadKing)=>100+suit*2+(leadKing?0:1);
+const isPlay=m=>m<100, isMarr=m=>m>=100&&m<200;
+const marrSuit=m=>((m-100)/2)|0, marrLeadsKing=m=>((m-100)%2)===0;
+const moveCard=m=>isPlay(m)?m:(isMarr(m)?mk(marrLeadsKing(m)?R_K:R_D,marrSuit(m)):-1);
+
+function newDeal(dealer){
+  const deck=[];for(let i=0;i<20;i++)deck.push(i);shuffle(deck);
+  const nd=1-dealer, hands=[[],[]];
+  hands[nd]=deck.slice(0,3).concat(deck.slice(7,9));
+  hands[dealer]=deck.slice(3,6).concat(deck.slice(9,11));
+  const trumpCard=deck[6];
+  const talon=deck.slice(11,20).concat([trumpCard]);
+  return {trump:suitOf(trumpCard),hands,talon,played:0,known:[0,0],
+    trickPts:[0,0],melds:[0,0],hasTrick:[false,false],
+    leader:nd,toMove:nd,led:-1,closedBy:-1,closeSnap:null,claimer:-1,
+    lastTrickWinner:-1,over:false,meldLog:[]};
+}
+function copyState(s){return{trump:s.trump,hands:[s.hands[0].slice(),s.hands[1].slice()],
+  talon:s.talon.slice(),played:s.played,known:[s.known[0],s.known[1]],
+  trickPts:[s.trickPts[0],s.trickPts[1]],melds:[s.melds[0],s.melds[1]],
+  hasTrick:[s.hasTrick[0],s.hasTrick[1]],leader:s.leader,toMove:s.toMove,led:s.led,
+  closedBy:s.closedBy,closeSnap:s.closeSnap,claimer:s.claimer,
+  lastTrickWinner:s.lastTrickWinner,over:s.over,meldLog:s.meldLog};}
+
+const score=(s,p)=>s.trickPts[p]+(s.hasTrick[p]?s.melds[p]:0);
+const isEndgame=s=>s.closedBy>=0||s.talon.length===0;
+const faceUp=s=>s.talon.length?s.talon[s.talon.length-1]:-1;
+
+function legalFollow(s,hand){
+  const led=s.led;
+  if(led<0||!isEndgame(s))return hand.slice();
+  const same=hand.filter(c=>suitOf(c)===suitOf(led));
+  if(same.length){const better=same.filter(c=>ordOf(c)>ordOf(led));return better.length?better:same;}
+  const tr=hand.filter(c=>suitOf(c)===s.trump);
+  if(tr.length)return tr;
+  return hand.slice();
+}
+const canExchange=(s,p)=>s.led<0&&s.closedBy<0&&s.talon.length>0&&s.hands[p].includes(mk(R_B,s.trump));
+const canClose=(s,p)=>s.led<0&&s.closedBy<0&&s.talon.length>=2;
+function marriageSuits(s,p){const h=s.hands[p],out=[];
+  for(let su=0;su<4;su++) if(h.includes(mk(R_K,su))&&h.includes(mk(R_D,su))) out.push(su);
+  return out;}
+
+function legalMoves(s){
+  const p=s.toMove,hand=s.hands[p];
+  if(s.led>=0) return legalFollow(s,hand);
+  const out=[];
+  if(canExchange(s,p))out.push(M_EXCH);
+  if(canClose(s,p))out.push(M_CLOSE);
+  for(const su of marriageSuits(s,p)){out.push(mMarr(su,true));out.push(mMarr(su,false));}
+  for(const c of hand)out.push(c);
+  return out;
+}
+
+function checkClaim(s,p){ if(score(s,p)>=66){s.claimer=p;s.over=true;} }
+
+function playCard(s,card){
+  const p=s.toMove;
+  s.hands[p].splice(s.hands[p].indexOf(card),1);
+  s.known[p]&=~bit(card);
+  s.played|=bit(card);
+  if(s.led<0){s.led=card;s.toMove=1-p;return s;}
+  const leadCard=s.led;
+  const w=beats(card,leadCard,s.trump)?p:s.leader;
+  s.trickPts[w]+=valOf(leadCard)+valOf(card);
+  s.hasTrick[w]=true;s.lastTrickWinner=w;s.led=-1;
+  checkClaim(s,w); if(s.over)return s;
+  if(s.closedBy<0&&s.talon.length){
+    s.hands[w].push(s.talon.shift());
+    const drawn=s.talon.shift();
+    s.hands[1-w].push(drawn);
+    if(!s.talon.length)s.known[1-w]|=bit(drawn);
+  }
+  if(!s.hands[0].length&&!s.hands[1].length){s.over=true;return s;}
+  s.leader=w;s.toMove=w;return s;
+}
+
+function applyMove(state,m){
+  const s=copyState(state),p=s.toMove;
+  if(m===M_EXCH){
+    const j=mk(R_B,s.trump);
+    s.hands[p].splice(s.hands[p].indexOf(j),1);
+    const up=s.talon[s.talon.length-1];
+    s.talon[s.talon.length-1]=j;
+    s.hands[p].push(up);
+    s.known[p]=(s.known[p]&~bit(j))|bit(up);
+    return s;
+  }
+  if(m===M_CLOSE){
+    const o=1-p;s.closedBy=p;s.closeSnap=[score(s,o),s.hasTrick[o]];return s;
+  }
+  if(isMarr(m)){
+    const su=marrSuit(m),lead=moveCard(m),partner=mk(marrLeadsKing(m)?R_D:R_K,su);
+    s.melds[p]+=(su===s.trump?40:20);
+    s.meldLog=s.meldLog.concat([[p,su,su===s.trump?40:20]]);
+    s.known[p]|=bit(partner)|bit(lead);
+    checkClaim(s,p); if(s.over)return s;
+    return playCard(s,lead);
+  }
+  return playCard(s,m);
+}
+
+function handResult(s){
+  if(s.closedBy>=0){
+    const c=s.closedBy,[oppPts,oppTrick]=s.closeSnap;
+    if(score(s,c)>=66) return [c, oppPts>=33?1:(oppTrick?2:3)];
+    return [1-c, oppTrick?2:3];
+  }
+  if(s.claimer>=0){
+    const w=s.claimer,l=1-w;
+    return [w, score(s,l)>=33?1:(s.hasTrick[l]?2:3)];
+  }
+  return [s.lastTrickWinner,1];
+}
+function resultText(s){
+  const [w,gp]=handResult(s);
+  if(s.closedBy>=0&&w!==s.closedBy)return "Zudrehen misslungen";
+  return gp===3?"Schwarz":gp===2?"Schneider":"1 Punkt";
+}
+function moveText(s,m){
+  if(m===M_EXCH)return "Trumpf-Buben tauschen";
+  if(m===M_CLOSE)return "Zudrehen";
+  if(isMarr(m)){const su=marrSuit(m);return `Ansage ${su===s.trump?40:20} und ${cardStr(moveCard(m))}`;}
+  return `${cardStr(m)}`;
+}
+
+/* ==========================================================================
+   3. Engine  (Portierung von ai.py)
+   ========================================================================== */
+const signedResult=(s,root)=>{const[w,gp]=handResult(s);return w===root?gp:-gp;};
+
+function unseenList(s,p){
+  let mask=ALL_MASK & ~s.played;
+  for(const c of s.hands[p])mask&=~bit(c);
+  const out=[];for(let c=0;c<20;c++)if(mask&bit(c))out.push(c);
+  return out;
+}
+function determinize(state,p){
+  const s=copyState(state),opp=1-p;
+  const fu=faceUp(s);
+  const knownOpp=s.hands[opp].filter(c=>s.known[opp]&bit(c));
+  let blocked=s.played;
+  for(const c of s.hands[p])blocked|=bit(c);
+  for(const c of knownOpp)blocked|=bit(c);
+  if(fu>=0)blocked|=bit(fu);
+  const pool=[];for(let c=0;c<20;c++)if(!(blocked&bit(c)))pool.push(c);
+  shuffle(pool);
+  const nOpp=s.hands[opp].length-knownOpp.length;
+  s.hands[opp]=knownOpp.concat(pool.slice(0,nOpp));
+  s.talon=pool.slice(nOpp).concat(fu>=0?[fu]:[]);
+  return s;
+}
+
+const partnerInHand=(hand,c)=>{const r=rankOf(c);
+  if(r===R_K)return hand.includes(mk(R_D,suitOf(c)));
+  if(r===R_D)return hand.includes(mk(R_K,suitOf(c)));
+  return false;};
+function discardCmp(s,hand){
+  return (a,b)=>{
+    const ka=[suitOf(a)===s.trump?1:0,partnerInHand(hand,a)?1:0,valOf(a),-ordOf(a)];
+    const kb=[suitOf(b)===s.trump?1:0,partnerInHand(hand,b)?1:0,valOf(b),-ordOf(b)];
+    for(let i=0;i<4;i++)if(ka[i]!==kb[i])return ka[i]-kb[i];
+    return 0;};
+}
+const sureWinner=(s,p,c)=>!s.hands[1-p].some(o=>beats(o,c,s.trump));
+
+function closingEstimate(s,p){
+  let total=0;const opp=s.hands[1-p];
+  const oppTr=opp.filter(o=>suitOf(o)===s.trump);
+  for(const c of s.hands[p].slice().sort((a,b)=>valOf(b)-valOf(a))){
+    if(suitOf(c)===s.trump){ if(oppTr.every(o=>ordOf(c)>ordOf(o))) total+=valOf(c)+4; }
+    else if(!oppTr.length&&opp.filter(o=>suitOf(o)===suitOf(c)).every(o=>ordOf(c)>ordOf(o))) total+=valOf(c)+4;
+  }
+  for(const su of marriageSuits(s,p)) total+=(su===s.trump?40:20);
+  return total;
+}
+
+function policy(s){
+  const p=s.toMove,hand=s.hands[p];
+  if(s.led>=0){
+    const cands=legalFollow(s,hand),led=s.led,table=valOf(led);
+    const winners=cands.filter(c=>beats(c,led,s.trump));
+    const need=66-score(s,p);
+    if(winners.length){
+      const cheapCmp=(a,b)=>{const ta=suitOf(a)===s.trump?1:0,tb=suitOf(b)===s.trump?1:0;
+        return ta!==tb?ta-tb:(valOf(a)!==valOf(b)?valOf(a)-valOf(b):ordOf(b)-ordOf(a));};
+      const bestGain=Math.max(...winners.map(c=>table+valOf(c)));
+      if(bestGain>=need){
+        const good=winners.filter(c=>table+valOf(c)>=need);
+        return good.slice().sort(cheapCmp)[0];
+      }
+      const high=winners.filter(c=>suitOf(c)===suitOf(led)&&(rankOf(c)===R_A||rankOf(c)===R_10));
+      if(high.length)return high.sort((a,b)=>valOf(b)-valOf(a))[0];
+      if(table>=10||isEndgame(s))return winners.slice().sort(cheapCmp)[0];
+    }
+    let losers=cands.filter(c=>!beats(c,led,s.trump));
+    if(!losers.length)losers=cands;
+    return losers.slice().sort(discardCmp(s,hand))[0];
+  }
+  if(canExchange(s,p))return M_EXCH;
+  if(canClose(s,p)&&score(s,p)+closingEstimate(s,p)>=66)return M_CLOSE;
+  const ms=marriageSuits(s,p);
+  if(ms.length){
+    const su=ms.includes(s.trump)?s.trump:ms[0];
+    return mMarr(su,sureWinner(s,p,mk(R_K,su)));
+  }
+  const wins=hand.filter(c=>sureWinner(s,p,c));
+  if(wins.length)return wins.sort((a,b)=>valOf(b)-valOf(a)||((suitOf(a)===s.trump?1:0)-(suitOf(b)===s.trump?1:0)))[0];
+  return hand.slice().sort(discardCmp(s,hand))[0];
+}
+
+/* --- exaktes Endspiel ---------------------------------------------------- */
+const NODE_LIMIT=20000, EXACT_FROM=5;
+let nodeCount=0;
+function solve(s,root,alpha,beta){
+  if(s.over)return signedResult(s,root);
+  if(++nodeCount>NODE_LIMIT)throw"budget";
+  const moves=legalMoves(s);
+  if(s.toMove===root){
+    let best=-99;
+    for(const m of moves){
+      const v=solve(applyMove(s,m),root,alpha,beta);
+      if(v>best)best=v; if(best>alpha)alpha=best; if(alpha>=beta)break;
+    }
+    return best;
+  }
+  let best=99;
+  for(const m of moves){
+    const v=solve(applyMove(s,m),root,alpha,beta);
+    if(v<best)best=v; if(best<beta)beta=best; if(alpha>=beta)break;
+  }
+  return best;
+}
+function solveWorld(s,root){
+  nodeCount=0;
+  try{return solve(s,root,-99,99);}catch(e){if(e==="budget")return null;throw e;}
+}
+function playout(s,root){
+  let guard=0;
+  while(!s.over){
+    if(isEndgame(s)&&s.led<0&&s.hands[0].length<=EXACT_FROM){
+      const v=solveWorld(s,root); if(v!==null)return v;
+    }
+    s=applyMove(s,policy(s));
+    if(++guard>60)break;
+  }
+  return signedResult(s,root);
+}
+
+function evaluateMoves(state,p,samples){
+  const moves=legalMoves(state);
+  const opp=1-p;
+  const nUnknown=unseenList(state,p).length;
+  const nOppHidden=state.hands[opp].filter(c=>!(state.known[opp]&bit(c))).length;
+  if(nUnknown===nOppHidden)samples=1;
+  else if(isEndgame(state))samples=Math.min(samples,24);
+  const worlds=[];for(let i=0;i<samples;i++)worlds.push(determinize(state,p));
+  const out=new Map();
+  for(const m of moves){
+    let total=0;
+    for(const w of worlds){
+      const nxt=applyMove(w,m);
+      let v=null;
+      if(isEndgame(nxt)&&nxt.hands[0].length<=EXACT_FROM)v=solveWorld(nxt,p);
+      if(v===null)v=playout(nxt,p);
+      total+=v;
+    }
+    out.set(m,total/worlds.length);
+  }
+  return out;
+}
+const LEVELS={leicht:0,normal:60,schwer:200};
+function botMove(s,p,level){
+  const n=LEVELS[level]??60;
+  if(n===0){
+    const m=policy(determinize(s,p));
+    const legal=legalMoves(s);
+    return legal.includes(m)?m:legal[0];
+  }
+  const sc=evaluateMoves(s,p,n);
+  let best=null,bv=-Infinity;
+  for(const [m,v] of sc) if(v>bv){bv=v;best=m;}
+  return best;
+}
+
+/* ==========================================================================
+   4. Trainer  (Portierung von coach.py)
+   ========================================================================== */
+const GOOD=0.15, OKTHR=0.45;
+function verdictOf(d){return d<=GOOD?["gut","✔","good"]:d<=OKTHR?["ungenau","~","mid"]:["fehler","✘","bad"];}
+const partnerOf=c=>rankOf(c)===R_K?mk(R_D,suitOf(c)):rankOf(c)===R_D?mk(R_K,suitOf(c)):-1;
+
+function tipsFor(s,p,move,best,scores){
+  const out=[],hand=s.hands[p],tr=s.trump;
+  const unseen=unseenList(s,p);
+  const unseenTr=unseen.filter(c=>suitOf(c)===tr);
+  const myTr=hand.filter(c=>suitOf(c)===tr);
+  const fu=faceUp(s);
+
+  if(canExchange(s,p)&&move!==M_EXCH)
+    out.push(`Tausche zuerst den Buben gegen die offene Trumpfkarte (${cardStr(fu)}). Das kostet nichts und ist fast nie falsch – du gibst 2 Augen ab und bekommst ${valOf(fu)} plus den stärkeren Trumpf.`);
+
+  const ms=marriageSuits(s,p);
+  if(ms.length&&!isMarr(move)&&move!==M_EXCH){
+    if(isPlay(move)&&partnerOf(move)>=0&&hand.includes(partnerOf(move)))
+      out.push(`Du zerreißt eine Ansage: mit ${cardStr(move)} und ${cardStr(partnerOf(move))} hättest du ${suitOf(move)===tr?40:20} Punkte melden können.`);
+    else{
+      const list=ms.map(su=>`${su===tr?40:20} in ${SUIT_NAME[su]}`).join(" und ");
+      out.push(`Du hältst ${list}. Melden ist fast immer sofort richtig – wer wartet, verliert die Ansage oft ganz.${ms.length>1?" Bei zwei Ansagen zuerst die, deren Karten du ohnehin loswerden willst.":""}`);
+    }
+  }
+
+  if(canClose(s,p)){
+    const cv=scores.get(M_CLOSE);
+    if(move!==M_CLOSE&&cv!==undefined&&cv-scores.get(move)>OKTHR)
+      out.push(`Hier war Zudrehen der beste Zug: du hast ${score(s,p)} Augen, ${66-score(s,p)} fehlen noch. Wer nur zudreht, wenn er sicher gewinnt, dreht viel zu selten zu.`);
+  }
+  if(move===M_CLOSE&&scores.get(best)-scores.get(move)>OKTHR)
+    out.push(`Zu früh zugedreht: du brauchst noch ${66-score(s,p)} Augen – und zwar ohne Nachziehen. Zähle vorher deine sicheren Stiche plus die Augen, die der Gegner dazulegen muss.`);
+
+  if(isPlay(move)&&s.led<0){
+    const c=move;
+    if(suitOf(c)===tr&&!isEndgame(s)&&s.talon.length>=6){
+      if(!(myTr.length&&unseenTr.every(u=>ordOf(c)>ordOf(u))))
+        out.push("Spiele früh keinen Trumpf aus. Solange der Talon offen ist, muss der Gegner nicht bedienen – du verschenkst deine Trümpfe.");
+    }
+    if((rankOf(c)===R_A||rankOf(c)===R_10)&&!isEndgame(s)&&unseenTr.length&&suitOf(c)!==tr)
+      out.push(`${cardStr(c)} anzuspielen ist riskant: es sind noch ${unseenTr.length} Trümpfe unterwegs, der Gegner darf vor dem Zudrehen frei stechen.`);
+    if(rankOf(c)===R_B&&!isEndgame(s)&&scores.get(best)-scores.get(move)<=GOOD)
+      out.push("Guter Reflex: kleine Karten anspielen kostet wenig und zwingt den Gegner, Material zu investieren.");
+  }
+
+  if(isPlay(move)&&s.led>=0){
+    const led=s.led,c=move;
+    const cands=[...scores.keys()].filter(isPlay);
+    const winners=cands.filter(x=>beats(x,led,tr));
+    const cheapCmp=(a,b)=>((suitOf(a)===tr?1:0)-(suitOf(b)===tr?1:0))||(valOf(a)-valOf(b))||(ordOf(b)-ordOf(a));
+    if(winners.length&&!beats(c,led,tr)){
+      if(valOf(led)>=10){
+        const ch=winners.slice().sort(cheapCmp)[0];
+        out.push(`Der Gegner hat ${cardStr(led)} gelegt – ${valOf(led)} Augen liegen auf dem Tisch. Solche Stiche solltest du nehmen (${cardStr(ch)} hätte gereicht); Ass und Zehn des Gegners abzustechen lohnt fast immer.`);
+      }
+      if(valOf(c)>=10){
+        const cheap=cands.filter(x=>!beats(x,led,tr)).sort((a,b)=>valOf(a)-valOf(b))[0];
+        if(valOf(cheap)<valOf(c))
+          out.push(`Wenn du den Stich schon hergibst, wirf die billigste Karte (${cardStr(cheap)} statt ${cardStr(c)}) – jede Zehn und jedes Ass, das du abwirfst, schenkt dem Gegner Augen.`);
+      }
+    }
+    if(beats(c,led,tr)&&winners.length){
+      const cheapest=winners.slice().sort(cheapCmp)[0];
+      if(suitOf(c)===tr&&suitOf(led)!==tr){
+        const nt=winners.filter(x=>suitOf(x)!==tr);
+        if(nt.length)out.push(`Du musstest nicht stechen: ${cardStr(nt.sort((a,b)=>valOf(b)-valOf(a))[0])} hätte den Stich auch geholt und du behältst den Trumpf.`);
+      }else if(suitOf(c)===suitOf(cheapest)&&valOf(c)>valOf(cheapest)+4){
+        out.push(`${cardStr(cheapest)} hätte gereicht – hebe hohe Karten für Stiche auf, die du wirklich brauchst.`);
+      }
+    }
+  }
+
+  if(isEndgame(s)&&s.led<0&&unseenTr.length&&myTr.length>=2){
+    const top=myTr.reduce((a,b)=>ordOf(a)>ordOf(b)?a:b);
+    if(unseenTr.every(u=>ordOf(top)>ordOf(u))){
+      const mc=moveCard(move);
+      if(!(mc>=0&&suitOf(mc)===tr))
+        out.push("Du hast die Trumpfkontrolle: zieh erst die Trümpfe des Gegners ab, danach laufen deine Asse und Zehner durch.");
+    }
+  }
+
+  for(const c of hand){
+    if(rankOf(c)===R_10&&!hand.includes(mk(R_A,suitOf(c)))&&suitOf(c)!==tr){
+      const ace=mk(R_A,suitOf(c));
+      if(unseen.includes(ace)&&isPlay(move)&&suitOf(move)===suitOf(c)&&valOf(move)<10)
+        out.push(`Achtung: dein ${cardStr(c)} ist ungedeckt, das ${cardStr(ace)} liegt noch irgendwo. Decke Zehner lieber mit dem König, statt die Farbe selbst anzuspielen.`);
+      break;
+    }
+  }
+  return out;
+}
+
+/* ==========================================================================
+   5. Oberfläche
+   ========================================================================== */
+const HUMAN=0,BOT=1;
+const $=id=>document.getElementById(id);
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+let S=null;
+let G={bummerl:[7,7],dealer:BOT,handNo:0,stats:[],sessionStats:[],level:"normal",coachOn:true};
+let tableCards=[];         // {card, player} – was gerade auf dem Tisch liegt
+let pendingMarriage=-1;    // Farbe, für die gerade eine Ansage gewählt wird
+let hintScores=null;
+let busy=false;
+
+const samplesForCoach=()=>Math.max(160,LEVELS[G.level]??60);
+
+/* --- Kartenelemente ------------------------------------------------------ */
+function cardEl(c,{back=false,anim=false}={}){
+  const d=document.createElement("div");
+  d.className="card"+(back?" back":"")+(anim?" anim":"");
+  if(back)return d;
+  if(SUIT_RED[suitOf(c)])d.classList.add("red");
+  const sym=SUIT_SYM[suitOf(c)],r=RANKS[rankOf(c)];
+  d.innerHTML=`<div class="idx">${r}<small>${sym}</small></div>
+    <div class="mid">${sym}</div>
+    <div class="idx b">${r}<small>${sym}</small></div>`;
+  return d;
+}
+function evBadge(v,best){
+  const b=document.createElement("div");
+  b.className="ev"+(best?" best":"");
+  b.textContent=(v>=0?"+":"")+v.toFixed(2);
+  return b;
+}
+
+/* --- Rendering ----------------------------------------------------------- */
+function render(){
+  if(!S)return;
+  $("bummerlTag").textContent=`${G.bummerl[HUMAN]} : ${G.bummerl[BOT]}`;
+  for(const [el,val,cls] of [[$("pipsMe"),G.bummerl[HUMAN],"me"],[$("pipsOpp"),G.bummerl[BOT],""]]){
+    el.innerHTML="";
+    for(let i=0;i<7;i++){const s=document.createElement("i");
+      s.className="pip"+(i<val?" on":"");el.appendChild(s);}
+  }
+  $("trumpTag").innerHTML=`Trumpf <b style="color:${SUIT_RED[S.trump]?'#c02b2b':'inherit'}">${SUIT_SYM[S.trump]}</b> ${SUIT_NAME[S.trump]}`;
+  $("myPts").textContent=`${score(S,HUMAN)} Augen`;
+  $("oppPts").textContent=`${score(S,BOT)} Augen`;
+
+  // Gegnerhand (verdeckt)
+  const oh=$("oppHand");oh.innerHTML="";
+  for(let i=0;i<S.hands[BOT].length;i++)oh.appendChild(cardEl(0,{back:true}));
+
+  // Stich
+  const tk=$("trick");tk.innerHTML="";
+  const slots=[];
+  for(const t of tableCards){
+    const wrap=document.createElement("div");wrap.className="trickcard";
+    const w=document.createElement("div");w.className="who";
+    w.textContent=t.player===HUMAN?"du":"Gegner";
+    wrap.appendChild(w);wrap.appendChild(cardEl(t.card,{anim:true}));
+    slots.push(wrap);
+  }
+  if(!slots.length){const d=document.createElement("div");d.className="slot";tk.appendChild(d);}
+  else slots.forEach(x=>tk.appendChild(x));
+
+  // Talon
+  const sp=$("stockpile");sp.innerHTML="";
+  const fu=faceUp(S);
+  if(S.talon.length){
+    if(S.closedBy<0&&fu>=0){const f=cardEl(fu);f.classList.add("trumpcard");sp.appendChild(f);}
+    const b=cardEl(0,{back:true});sp.appendChild(b);
+    if(S.closedBy>=0){
+      const m=document.createElement("div");m.className="closedmark";
+      m.textContent="ZU";sp.appendChild(m);
+    }
+  }
+  $("stockLabel").textContent = S.closedBy>=0
+    ? `zugedreht ${S.closedBy===HUMAN?"(du)":"(Gegner)"}`
+    : (S.talon.length?`Talon · ${S.talon.length}`:"Talon leer");
+
+  renderHandAndChips();
+  renderMemo();
+  renderStats();
+}
+
+function renderHandAndChips(){
+  const myTurn=!busy&&!S.over&&S.toMove===HUMAN;
+  const moves=myTurn?legalMoves(S):[];
+  const bestMove=hintScores?[...hintScores.entries()].reduce((a,b)=>b[1]>a[1]?b:a)[0]:null;
+
+  // Aktions-Chips
+  const ch=$("chips");ch.innerHTML="";
+  const addChip=(label,cls,fn,mv)=>{
+    const b=document.createElement("button");
+    b.className="chip"+(cls?" "+cls:"");b.textContent=label;
+    b.onclick=fn;
+    if(hintScores&&mv!==undefined&&hintScores.has(mv))
+      b.appendChild(evBadge(hintScores.get(mv),mv===bestMove));
+    ch.appendChild(b);return b;
+  };
+  if(myTurn){
+    if(pendingMarriage>=0){
+      addChip("Abbrechen","danger",()=>{pendingMarriage=-1;render();});
+      $("hintline").textContent="Ansage: spiel jetzt König oder Dame dieser Farbe aus.";
+    }else{
+      if(moves.includes(M_EXCH))addChip(`Buben tauschen (${cardStr(faceUp(S))})`,"gold",()=>doMove(M_EXCH),M_EXCH);
+      for(const su of marriageSuits(S,HUMAN)){
+        const mK=mMarr(su,true), mD=mMarr(su,false);
+        if(!moves.includes(mK))continue;
+        const chip=addChip(`Ansage ${su===S.trump?40:20} ${SUIT_SYM[su]}`,"gold",
+                           ()=>{pendingMarriage=su;render();});
+        // Eine Ansage sind zwei Zuege (König oder Dame ausspielen) – der Chip
+        // zeigt den besseren der beiden Werte an.
+        if(hintScores&&hintScores.has(mK))
+          chip.appendChild(evBadge(Math.max(hintScores.get(mK),hintScores.get(mD)),
+                                   mK===bestMove||mD===bestMove));
+      }
+      if(moves.includes(M_CLOSE))addChip("Zudrehen","danger",()=>doMove(M_CLOSE),M_CLOSE);
+      $("hintline").textContent = S.led>=0
+        ? "Der Gegner hat ausgespielt – bedien oder wirf ab."
+        : "Du spielst aus.";
+    }
+  }else $("hintline").textContent="";
+
+  // Handkarten
+  const mh=$("myHand");mh.innerHTML="";
+  const hand=S.hands[HUMAN].slice().sort((a,b)=>{
+    const ta=suitOf(a)===S.trump?0:1,tb=suitOf(b)===S.trump?0:1;
+    return ta-tb||suitOf(a)-suitOf(b)||ordOf(b)-ordOf(a);});
+  for(const c of hand){
+    const el=cardEl(c);
+    let mv=null;
+    if(myTurn){
+      if(pendingMarriage>=0){
+        if(rankOf(c)===R_K&&suitOf(c)===pendingMarriage)mv=mMarr(pendingMarriage,true);
+        else if(rankOf(c)===R_D&&suitOf(c)===pendingMarriage)mv=mMarr(pendingMarriage,false);
+      }else if(moves.includes(c))mv=c;
+    }
+    if(mv!==null){
+      el.classList.add("playable");
+      if(pendingMarriage>=0)el.classList.add("glow");
+      el.onclick=()=>doMove(mv);
+      if(hintScores&&hintScores.has(mv))el.appendChild(evBadge(hintScores.get(mv),mv===bestMove));
+    }else if(myTurn){
+      el.classList.add("dim");
+      el.onclick=()=>{el.classList.add("shake");setTimeout(()=>el.classList.remove("shake"),300);};
+    }
+    mh.appendChild(el);
+  }
+}
+
+function renderMemo(){
+  const un=unseenList(S,HUMAN);
+  const box=$("memo");box.innerHTML="";
+  for(let su=0;su<4;su++){
+    const cs=un.filter(c=>suitOf(c)===su).sort((a,b)=>ordOf(b)-ordOf(a));
+    const line=document.createElement("div");
+    line.innerHTML=`<span class="s" style="color:${SUIT_RED[su]?'#c02b2b':'var(--muted)'}">${SUIT_SYM[su]}</span> `;
+    if(!cs.length)line.innerHTML+=`<span style="color:var(--muted)">–</span>`;
+    for(const c of cs){
+      const t=document.createElement("span");
+      t.className="mc"+(SUIT_RED[su]?" red":"")+(su===S.trump?" tr":"");
+      t.textContent=RANKS[rankOf(c)]+SUIT_SYM[su];
+      line.appendChild(t);
+    }
+    box.appendChild(line);
+  }
+  const trLeft=un.filter(c=>suitOf(c)===S.trump).length;
+  const hi=un.filter(c=>rankOf(c)<=R_10).length;
+  const note=document.createElement("div");
+  note.style.cssText="margin-top:6px;font-size:12px;color:var(--muted)";
+  note.textContent=`${trLeft} Trümpfe und ${hi} Asse/Zehner noch im Spiel.`;
+  box.appendChild(note);
+}
+
+function renderStats(){
+  const st=G.stats;
+  const good=st.filter(x=>x[0]==="gut").length;
+  const bad=st.filter(x=>x[0]==="fehler").length;
+  const lost=st.reduce((a,x)=>a+x[1],0);
+  $("stats").innerHTML = st.length
+    ? `<span><b>${st.length}</b> Züge</span><span><b>${good}</b> gut</span><span><b>${bad}</b> Fehler</span><span>−<b>${lost.toFixed(1)}</b> Punkte verschenkt</span>`
+    : "";
+}
+
+function logLine(html){
+  const l=$("log");
+  const d=document.createElement("div");d.innerHTML=html;
+  l.appendChild(d);l.scrollTop=l.scrollHeight;
+}
+
+/* --- Trainer-Panel ------------------------------------------------------- */
+function showCoach(s,p,move,scores){
+  let best=null,bv=-Infinity;
+  for(const [m,v] of scores)if(v>bv){bv=v;best=m;}
+  const val=scores.get(move),delta=bv-val;
+  const [label,mark,cls]=verdictOf(delta);
+  G.stats.push([label,delta,moveText(s,move),moveText(s,best)]);
+  if(!G.coachOn){$("coachBody").innerHTML=`<div style="color:var(--muted);font-size:13.5px">Trainer ist aus.</div>`;return;}
+
+  const head={gut:"Guter Zug",ungenau:"Geht besser",fehler:"Fehler"}[label];
+  const tips=tipsFor(s,p,move,best,scores);
+  if(bv<=-1.2)tips.push("Die Stellung ist praktisch verloren – hier rettet kein Zug mehr etwas. Der Fehler lag früher.");
+  else if(bv>=1.2&&delta<=GOOD)tips.push("Stellung klar gewonnen – jetzt sauber nach Hause spielen.");
+
+  const me=score(s,HUMAN),opp=score(s,BOT);
+  $("coachBody").innerHTML=`
+    <div class="verdict">
+      <div class="badge ${cls}">${mark}</div>
+      <div class="vtitle">${head}</div>
+      <div class="vval">${val>=0?"+":""}${val.toFixed(2)}</div>
+    </div>
+    ${delta>GOOD?`<div class="better">Besser: <b>${moveText(s,best)}</b>
+      <span style="color:var(--muted)">(${bv>=0?"+":""}${bv.toFixed(2)} · ${delta.toFixed(2)} besser)</span></div>`:""}
+    ${tips.length?`<ul class="tips">${tips.map(t=>`<li>${t}</li>`).join("")}</ul>`:""}
+    <div class="count">
+      Du ${me} Augen · noch ${Math.max(0,66-me)} bis 66
+      <div class="meter"><i style="width:${Math.min(100,me/66*100)}%"></i></div>
+      Gegner ${opp} Augen · noch ${Math.max(0,66-opp)}
+      <div class="meter opp"><i style="width:${Math.min(100,opp/66*100)}%"></i></div>
+    </div>`;
+}
+
+/* --- Spielfluss ---------------------------------------------------------- */
+async function doMove(m){
+  if(busy||S.over||S.toMove!==HUMAN)return;
+  busy=true;pendingMarriage=-1;
+  const before=S;
+  const scores=hintScores??evaluateMoves(S,HUMAN,samplesForCoach());
+  hintScores=null;
+  showCoach(before,HUMAN,m,scores);
+  logLine(`<b>Du:</b> ${moveText(before,m)}`);
+  await applyVisual(m,HUMAN);
+  if(!S.over)await botTurns();
+  busy=false;
+  if(S.over)await finishHand(); else render();
+}
+
+async function applyVisual(m,player){
+  const before=S;
+  const wasSecond=before.led>=0;
+  const c=moveCard(m);
+  if(c>=0)tableCards.push({card:c,player});
+  S=applyMove(before,m);
+  render();
+  if(isMarr(m))logLine(`<span style="color:var(--gold)">Ansage ${marrSuit(m)===before.trump?40:20} ${SUIT_SYM[marrSuit(m)]}</span>`);
+  if(wasSecond&&c>=0){
+    await sleep(900);
+    const w=S.lastTrickWinner;
+    const pts=valOf(before.led)+valOf(c);
+    logLine(`&nbsp;&nbsp;→ Stich (${pts} Augen) an ${w===HUMAN?"<b>dich</b>":"den Gegner"}`);
+    tableCards=[];
+    render();
+    await sleep(160);
+  }else await sleep(250);
+}
+
+async function botTurns(){
+  $("thinking").classList.add("on");
+  while(!S.over&&S.toMove===BOT){
+    render();
+    await sleep(340);
+    const m=botMove(S,BOT,G.level);
+    logLine(`<b>Gegner:</b> ${moveText(S,m)}`);
+    await applyVisual(m,BOT);
+  }
+  $("thinking").classList.remove("on");
+  render();
+}
+
+async function finishHand(){
+  const [w,gp]=handResult(S);
+  G.bummerl[w]=Math.max(0,G.bummerl[w]-gp);
+  G.sessionStats=G.sessionStats.concat(G.stats);
+  const st=G.stats;
+  const worst=st.length?st.reduce((a,b)=>b[1]>a[1]?b:a):null;
+  logLine(`<b>${w===HUMAN?"Du gewinnst":"Gegner gewinnt"}</b> das Blatt: ${resultText(S)} (${gp})`);
+  render();
+
+  const over=G.bummerl[HUMAN]===0||G.bummerl[BOT]===0;
+  $("resultBody").innerHTML=`
+    <div class="big" style="color:${w===HUMAN?"var(--good)":"var(--bad)"}">
+      ${w===HUMAN?"Blatt gewonnen":"Blatt verloren"} – ${resultText(S)}</div>
+    <div class="sub">Augen: du ${score(S,HUMAN)} · Gegner ${score(S,BOT)}
+      &nbsp;·&nbsp; Bummerl ${G.bummerl[HUMAN]} : ${G.bummerl[BOT]}</div>
+    ${st.length?`<div class="sub" style="margin-top:10px">
+      Deine ${st.length} Züge:
+      ${st.filter(x=>x[0]==="gut").length} gut ·
+      ${st.filter(x=>x[0]==="ungenau").length} ungenau ·
+      ${st.filter(x=>x[0]==="fehler").length} Fehler</div>`:""}
+    ${worst&&worst[1]>GOOD?`<div class="sub" style="margin-top:6px;color:var(--warn)">
+      Teuerster Zug: ${worst[2]} – besser war ${worst[3]} (${worst[1].toFixed(2)})</div>`:""}
+    ${over?`<div class="big" style="margin-top:16px">${G.bummerl[HUMAN]===0?"Bummerl gewonnen! 🎉":"Bummerl verloren."}</div>`:""}
+    <div style="margin-top:18px">
+      <button class="btn primary" id="btnNext">${over?"Neues Bummerl":"Nächstes Blatt"}</button>
+    </div>`;
+  $("dlgResult").showModal();
+  $("btnNext").onclick=()=>{
+    $("dlgResult").close();
+    if(over)newBummerl(); else newHand();
+  };
+}
+
+async function newHand(){
+  G.dealer=1-G.dealer;
+  G.handNo++;G.stats=[];hintScores=null;tableCards=[];
+  S=newDeal(G.dealer);
+  $("log").innerHTML="";
+  logLine(`<b>Blatt ${G.handNo}</b> · Trumpf ${SUIT_NAME[S.trump]} ${SUIT_SYM[S.trump]} (${cardStr(faceUp(S))} offen)`);
+  render();
+  busy=true;
+  if(S.toMove===BOT)await botTurns();
+  busy=false;render();
+}
+function newBummerl(){
+  G.bummerl=[7,7];G.dealer=BOT;G.handNo=0;G.stats=[];G.sessionStats=[];
+  newHand();
+}
+
+/* --- Bedienelemente ------------------------------------------------------ */
+$("btnNew").onclick=()=>newBummerl();
+$("level").onchange=e=>{G.level=e.target.value;};
+$("btnCoach").onclick=e=>{G.coachOn=!G.coachOn;e.target.textContent=G.coachOn?"An":"Aus";};
+$("btnHint").onclick=()=>{
+  if(busy||!S||S.over||S.toMove!==HUMAN)return;
+  const btn=$("btnHint");btn.textContent="rechne …";btn.classList.add("busy");
+  setTimeout(()=>{
+    hintScores=evaluateMoves(S,HUMAN,samplesForCoach());
+    btn.textContent="Hinweis anzeigen";btn.classList.remove("busy");
+    render();
+  },20);
+};
+
+const RULES_HTML=`
+<h3>Ziel</h3>
+<p>66 Augen aus Stichen und Ansagen. Wer sie erreicht, gewinnt das Blatt sofort
+(das Programm sagt automatisch an).</p>
+<h3>Karten</h3>
+<table><tr><td>Ass</td><td>11</td><td>Zehn</td><td>10</td><td>König</td><td>4</td>
+<td>Dame</td><td>3</td><td>Bube</td><td>2</td></tr></table>
+<p>20 Karten, zusammen 120 Augen. Jeder bekommt 5, eine Karte liegt offen und
+bestimmt den Trumpf, die übrigen 10 bilden den Talon. Der Nichtgeber spielt aus.</p>
+<h3>Offener Talon</h3>
+<ul>
+<li>Kein Farb- und kein Stichzwang – du darfst alles spielen.</li>
+<li>Nach jedem Stich zieht der Stichgewinner zuerst nach.</li>
+<li>Den <b>Trumpf-Buben</b> darfst du beim Ausspielen gegen die offene Trumpfkarte tauschen.</li>
+<li><b>Ansage</b>: König + Dame derselben Farbe = 20 Augen, in Trumpf 40. Nur beim
+Ausspielen, und du musst eine der beiden Karten dazu ausspielen. Sie zählt erst,
+wenn du einen Stich gemacht hast.</li>
+</ul>
+<h3>Zudrehen</h3>
+<p>Beim Ausspielen darfst du den Talon zudrehen. Ab dann gilt <b>Farbzwang und
+Stichzwang</b> (bedienen, wenn möglich überstechen, sonst trumpfen) und es wird
+nicht mehr nachgezogen. Du verpflichtest dich, 66 zu erreichen.</p>
+<h3>Wertung</h3>
+<table>
+<tr><td>Gegner hat 33+ Augen</td><td><b>1</b></td></tr>
+<tr><td>Gegner hat 1–32 Augen</td><td><b>2</b> (Schneider)</td></tr>
+<tr><td>Gegner hat keinen Stich</td><td><b>3</b> (Schwarz)</td></tr>
+<tr><td>Zudrehen misslungen</td><td><b>2</b>, ohne Stich des Gegners <b>3</b></td></tr>
+<tr><td>Niemand erreicht 66</td><td><b>1</b> für den letzten Stich</td></tr>
+</table>
+<p>Nach dem Zudrehen zählt der Stand des Gegners <b>im Moment des Zudrehens</b>.
+Beide starten bei 7 Bummerl-Punkten und zählen herunter; wer bei 0 ist, gewinnt.</p>`;
+
+const STRAT_HTML=`
+<h3>Zählen</h3>
+<ul>
+<li>Zähle in jedem Stich mit. 66 ist das Ziel, <b>33</b> die zweite Marke: ab 33
+Augen verliert der Gegner nur noch 1 statt 2 Punkte.</li>
+<li>Merke dir die unbekannten Karten in dieser Reihenfolge: Trümpfe, Asse, Zehner.
+Die Merkhilfe rechts nimmt dir das ab – gewöhn es dir trotzdem selbst an.</li>
+</ul>
+<h3>Tauschen und ansagen</h3>
+<ul>
+<li>Den Trumpf-Buben zu tauschen ist praktisch nie falsch – sofort machen.</li>
+<li>Ansagen so früh wie möglich melden. Wer wartet, verliert sie oft ganz.</li>
+<li>König und Dame einer Farbe nie einzeln wegwerfen, solange die Ansage lebt.</li>
+</ul>
+<h3>Bei offenem Talon</h3>
+<ul>
+<li>Führe früh keinen Trumpf aus – der Gegner muss nicht bedienen, du verschenkst
+Kontrolle.</li>
+<li>Spiele kleine Karten an (Buben, tote Farben) und behalte Asse und Zehner.</li>
+<li>Jeder Trumpf, den der Gegner verbraucht und du nicht, erhöht deine Chance auf
+die Trumpfkontrolle am Ende.</li>
+<li>Gegnerische Asse und Zehner nimmst du am liebsten mit Zehn oder Ass derselben
+Farbe – dann bleiben König und Dame für eine Ansage übrig.</li>
+<li>Musst du abwerfen, wirf die billigste Karte. Eine blanke Zehn ist teuer –
+decke sie lieber mit dem König.</li>
+</ul>
+<h3>Zudrehen</h3>
+<ul>
+<li>Rechne: eigene Augen + sichere Stiche + die Augen, die der Gegner zulegen muss.
+Kommst du auf 66, dreh zu.</li>
+<li>Häufigster Fehler: nur zudrehen, wenn es hundertprozentig sicher ist. Wer jedes
+Zudrehen gewinnt, dreht zu selten zu.</li>
+<li>Erzwungenes Zudrehen: wenn Weiterspielen fast sicher verliert, ist ein riskantes
+Zudrehen die bessere Wahl.</li>
+</ul>
+<h3>Endspiel</h3>
+<ul>
+<li>Zugedreht oder Talon leer: jetzt kannst du die Gegnerhand exakt ausrechnen.</li>
+<li>Mit Trumpfkontrolle: erst die gegnerischen Trümpfe abziehen, dann laufen deine
+Asse und Zehner durch.</li>
+<li>Ohne Trumpfkontrolle: tote Farben anspielen und ihn zum Stechen zwingen.
+Verlierer zuerst ausspielen, Gewinner für den Stichrückgewinn aufheben.</li>
+<li>Ist 66 nicht mehr zu schaffen, behalte einen Trumpf für den letzten Stich – der
+ist einen Bummerl-Punkt wert.</li>
+</ul>
+<h3>Wie der Trainer rechnet</h3>
+<p>Für jeden möglichen Zug werden die unbekannten Karten viele Male zufällig, aber
+konsistent verteilt (alles, was du gesehen hast, wird berücksichtigt), das Blatt
+zu Ende gespielt und das Endspiel exakt gelöst. Die Zahl ist der erwartete
+<b>Bummerl-Ertrag</b> von +3 bis −3 – nicht die Augen.</p>`;
+
+function openDlg(title,html){$("dlgTitle").textContent=title;$("dlgBody").innerHTML=html;$("dlg").showModal();}
+$("btnRules").onclick=()=>openDlg("Regeln",RULES_HTML);
+$("btnStrat").onclick=()=>openDlg("Strategie",STRAT_HTML);
+document.addEventListener("keydown",e=>{
+  if(e.key==="h"&&!e.metaKey&&!e.ctrlKey)$("btnHint").click();
+  if(e.key>="1"&&e.key<="9"){
+    const els=[...document.querySelectorAll("#myHand .card.playable")];
+    const i=+e.key-1;if(els[i])els[i].click();
+  }
+});
+
+newBummerl();
+</script>
+</body>
+</html>
