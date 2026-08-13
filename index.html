@@ -207,6 +207,21 @@ aside{display:flex;flex-direction:column;gap:12px;position:sticky;top:64px}
 .meter{height:6px;border-radius:3px;background:var(--panel2);overflow:hidden;margin-top:5px}
 .meter i{display:block;height:100%;background:var(--good)}
 .meter.opp i{background:var(--bad)}
+.panel h2.tog{cursor:pointer;display:flex;align-items:center;gap:7px;user-select:none;margin:0}
+.panel h2.tog:hover{color:var(--fg)}
+.panel h2.tog .caret{display:inline-block;transition:transform .15s;font-size:10px}
+.panel.collapsed h2.tog .caret{transform:rotate(-90deg)}
+.panel.collapsed .pbody{display:none}
+.panel h2.tog .cnt{margin-left:auto;font-weight:600;color:var(--fg);letter-spacing:0}
+.pbody{margin-top:8px}
+.trick-row{display:flex;align-items:center;gap:6px;padding:3px 0;font-size:13px;border-bottom:1px solid var(--line)}
+.trick-row:last-child{border-bottom:0}
+.trick-row .no{color:var(--muted);min-width:1.6em;font-variant-numeric:tabular-nums}
+.trick-row .sum{margin-left:auto;color:var(--muted);font-variant-numeric:tabular-nums}
+.trick-row .mc.mine{border-color:var(--good);font-weight:700}
+.meld-row{font-size:13px;padding:3px 0;color:var(--gold)}
+.tricktotal{margin-top:8px;padding-top:8px;border-top:1px solid var(--line);
+  font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
 .memo{font-size:13px;line-height:1.9}
 .memo .s{display:inline-block;min-width:1.4em;color:var(--muted)}
 .mc{
@@ -252,6 +267,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 
 <header>
   <div class="brand">Schnapsen<span>·</span>Trainer</div>
+  <span class="tag" id="verTag" title="Programmversion"></span>
   <div class="pips" title="Bummerl – wer zuerst bei 0 ist, gewinnt">
     <span class="tag" id="bummerlTag">7 : 7</span>
     <span class="pipset me" id="pipsMe"></span>
@@ -274,7 +290,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
     <div class="thinking" id="thinking"><span>Gegner denkt</span><i class="dot"></i><i class="dot"></i><i class="dot"></i></div>
 
     <div class="row zone-top">
-      <div class="seat"><b>Gegner</b><span class="pts" id="oppPts">0 Augen</span></div>
+      <div class="seat"><b>Gegner</b><span class="pts" id="oppPts">0 Punkte</span></div>
       <div class="hand" id="oppHand"></div>
     </div>
 
@@ -289,7 +305,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
     </div>
 
     <div class="row zone-bot">
-      <div class="seat"><b>Du</b><span class="pts" id="myPts">0 Augen</span></div>
+      <div class="seat"><b>Du</b><span class="pts" id="myPts">0 Punkte</span></div>
       <div class="chips" id="chips"></div>
       <div class="hand" id="myHand"></div>
       <div class="hintline" id="hintline"></div>
@@ -308,16 +324,25 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
       </div>
     </div>
 
-    <div class="panel">
-      <h2>Merkhilfe – noch unbekannt</h2>
-      <div class="memo" id="memo"></div>
+    <div class="panel" id="panelTricks">
+      <h2 class="tog" data-panel="panelTricks"><span class="caret">▾</span> Deine Stiche
+        <span class="cnt" id="tricksCnt"></span></h2>
+      <div class="pbody"><div id="tricks"></div></div>
     </div>
 
-    <div class="panel">
-      <h2>Verlauf</h2>
-      <div class="log" id="log"></div>
-      <div class="statline" id="stats" style="margin-top:8px"></div>
+    <div class="panel" id="panelMemo">
+      <h2 class="tog" data-panel="panelMemo"><span class="caret">▾</span> Merkhilfe – noch unbekannt</h2>
+      <div class="pbody"><div class="memo" id="memo"></div></div>
     </div>
+
+    <div class="panel" id="panelLog">
+      <h2 class="tog" data-panel="panelLog"><span class="caret">▾</span> Verlauf</h2>
+      <div class="pbody">
+        <div class="log" id="log"></div>
+        <div class="statline" id="stats" style="margin-top:8px"></div>
+      </div>
+    </div>
+
   </aside>
 </main>
 
@@ -569,6 +594,10 @@ function policy(s){
 
 /* --- exaktes Endspiel ---------------------------------------------------- */
 const NODE_LIMIT=20000, EXACT_FROM=5;
+// Im zugedrehten Endspiel wird jede Welt exakt geloest – das ist teuer, aber
+// so genau, dass sich viele Stichproben lohnen (mit 24 war das die mit Abstand
+// verrauschteste Stelle im ganzen Spiel).
+const ENDGAME_CAP=400;
 let nodeCount=0;
 function solve(s,root,alpha,beta){
   if(s.over)return signedResult(s,root);
@@ -610,8 +639,8 @@ function evaluateMoves(state,p,samples){
   const opp=1-p;
   const nUnknown=unseenList(state,p).length;
   const nOppHidden=state.hands[opp].filter(c=>!(state.known[opp]&bit(c))).length;
-  if(nUnknown===nOppHidden)samples=1;
-  else if(isEndgame(state))samples=Math.min(samples,24);
+  if(nUnknown===nOppHidden)samples=1;          // Gegnerhand eindeutig bestimmt
+  else if(isEndgame(state))samples=Math.min(samples,ENDGAME_CAP);
   const worlds=[];for(let i=0;i<samples;i++)worlds.push(determinize(state,p));
   const out=new Map();
   for(const m of moves){
@@ -645,6 +674,8 @@ function botMove(s,p,level){
    4. Trainer  (Portierung von coach.py)
    ========================================================================== */
 const GOOD=0.15, OKTHR=0.45;
+// Unterschied, ab dem zwei Züge überhaupt als verschieden gelten.
+const TIE=0.10;
 function verdictOf(d){return d<=GOOD?["gut","✔","good"]:d<=OKTHR?["ungenau","~","mid"]:["fehler","✘","bad"];}
 const partnerOf=c=>rankOf(c)===R_K?mk(R_D,suitOf(c)):rankOf(c)===R_D?mk(R_K,suitOf(c)):-1;
 
@@ -656,7 +687,7 @@ function tipsFor(s,p,move,best,scores){
   const fu=faceUp(s);
 
   if(canExchange(s,p)&&move!==M_EXCH)
-    out.push(`Tausche zuerst den Buben gegen die offene Trumpfkarte (${cardStr(fu)}). Das kostet nichts und ist fast nie falsch – du gibst 2 Augen ab und bekommst ${valOf(fu)} plus den stärkeren Trumpf.`);
+    out.push(`Tausche zuerst den Buben gegen die offene Trumpfkarte (${cardStr(fu)}). Das kostet nichts und ist fast nie falsch – du gibst 2 Punkte ab und bekommst ${valOf(fu)} plus den stärkeren Trumpf.`);
 
   const ms=marriageSuits(s,p);
   if(ms.length&&!isMarr(move)&&move!==M_EXCH){
@@ -671,10 +702,10 @@ function tipsFor(s,p,move,best,scores){
   if(canClose(s,p)){
     const cv=scores.get(M_CLOSE);
     if(move!==M_CLOSE&&cv!==undefined&&cv-scores.get(move)>OKTHR)
-      out.push(`Hier war Zudrehen der beste Zug: du hast ${score(s,p)} Augen, ${66-score(s,p)} fehlen noch. Wer nur zudreht, wenn er sicher gewinnt, dreht viel zu selten zu.`);
+      out.push(`Hier war Zudrehen der beste Zug: du hast ${score(s,p)} Punkte, ${66-score(s,p)} fehlen noch. Wer nur zudreht, wenn er sicher gewinnt, dreht viel zu selten zu.`);
   }
   if(move===M_CLOSE&&scores.get(best)-scores.get(move)>OKTHR)
-    out.push(`Zu früh zugedreht: du brauchst noch ${66-score(s,p)} Augen – und zwar ohne Nachziehen. Zähle vorher deine sicheren Stiche plus die Augen, die der Gegner dazulegen muss.`);
+    out.push(`Zu früh zugedreht: du brauchst noch ${66-score(s,p)} Punkte – und zwar ohne Nachziehen. Zähle vorher deine sicheren Stiche plus die Punkte, die der Gegner dazulegen muss.`);
 
   if(isPlay(move)&&s.led<0){
     const c=move;
@@ -696,12 +727,12 @@ function tipsFor(s,p,move,best,scores){
     if(winners.length&&!beats(c,led,tr)){
       if(valOf(led)>=10){
         const ch=winners.slice().sort(cheapCmp)[0];
-        out.push(`Der Gegner hat ${cardStr(led)} gelegt – ${valOf(led)} Augen liegen auf dem Tisch. Solche Stiche solltest du nehmen (${cardStr(ch)} hätte gereicht); Ass und Zehn des Gegners abzustechen lohnt fast immer.`);
+        out.push(`Der Gegner hat ${cardStr(led)} gelegt – ${valOf(led)} Punkte liegen auf dem Tisch. Solche Stiche solltest du nehmen (${cardStr(ch)} hätte gereicht); Ass und Zehn des Gegners abzustechen lohnt fast immer.`);
       }
       if(valOf(c)>=10){
         const cheap=cands.filter(x=>!beats(x,led,tr)).sort((a,b)=>valOf(a)-valOf(b))[0];
         if(valOf(cheap)<valOf(c))
-          out.push(`Wenn du den Stich schon hergibst, wirf die billigste Karte (${cardStr(cheap)} statt ${cardStr(c)}) – jede Zehn und jedes Ass, das du abwirfst, schenkt dem Gegner Augen.`);
+          out.push(`Wenn du den Stich schon hergibst, wirf die billigste Karte (${cardStr(cheap)} statt ${cardStr(c)}) – jede Zehn und jedes Ass, das du abwirfst, schenkt dem Gegner Punkte.`);
       }
     }
     if(beats(c,led,tr)&&winners.length){
@@ -738,6 +769,7 @@ function tipsFor(s,p,move,best,scores){
 /* ==========================================================================
    5. Oberfläche
    ========================================================================== */
+const VERSION="1.1.0";
 const HUMAN=0,BOT=1;
 const $=id=>document.getElementById(id);
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -745,11 +777,12 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 let S=null;
 let G={bummerl:[7,7],dealer:BOT,handNo:0,stats:[],sessionStats:[],level:"normal",coachOn:true};
 let tableCards=[];         // {card, player} – was gerade auf dem Tisch liegt
+let wonTricks=[[],[]];     // gewonnene Stiche je Spieler, nur für die Anzeige
 let pendingMarriage=-1;    // Farbe, für die gerade eine Ansage gewählt wird
 let hintScores=null;
 let busy=false;
 
-const samplesForCoach=()=>Math.max(160,LEVELS[G.level]??60);
+const samplesForCoach=()=>Math.max(300,LEVELS[G.level]??60);
 
 /* --- Kartenelemente ------------------------------------------------------ */
 function cardEl(c,{back=false,anim=false}={}){
@@ -780,8 +813,8 @@ function render(){
       s.className="pip"+(i<val?" on":"");el.appendChild(s);}
   }
   $("trumpTag").innerHTML=`Trumpf <b style="color:${SUIT_RED[S.trump]?'#c02b2b':'inherit'}">${SUIT_SYM[S.trump]}</b> ${SUIT_NAME[S.trump]}`;
-  $("myPts").textContent=`${score(S,HUMAN)} Augen`;
-  $("oppPts").textContent=`${score(S,BOT)} Augen`;
+  $("myPts").textContent=`${score(S,HUMAN)} Punkte`;
+  $("oppPts").textContent=`${score(S,BOT)} Punkte`;
 
   // Gegnerhand (verdeckt)
   const oh=$("oppHand");oh.innerHTML="";
@@ -816,6 +849,7 @@ function render(){
     : (S.talon.length?`Talon · ${S.talon.length}`:"Talon leer");
 
   renderHandAndChips();
+  renderTricks();
   renderMemo();
   renderStats();
 }
@@ -823,7 +857,10 @@ function render(){
 function renderHandAndChips(){
   const myTurn=!busy&&!S.over&&S.toMove===HUMAN;
   const moves=myTurn?legalMoves(S):[];
-  const bestMove=hintScores?[...hintScores.entries()].reduce((a,b)=>b[1]>a[1]?b:a)[0]:null;
+  // Züge, die höchstens TIE unter dem Besten liegen, gelten als gleichwertig –
+  // sie als „einen besten Zug" auszugeben wäre gegenüber dem Rauschen gelogen.
+  const bestVal=hintScores?Math.max(...hintScores.values()):null;
+  const isBest=m=>hintScores!==null&&hintScores.has(m)&&hintScores.get(m)>=bestVal-TIE;
 
   // Aktions-Chips
   const ch=$("chips");ch.innerHTML="";
@@ -832,7 +869,7 @@ function renderHandAndChips(){
     b.className="chip"+(cls?" "+cls:"");b.textContent=label;
     b.onclick=fn;
     if(hintScores&&mv!==undefined&&hintScores.has(mv))
-      b.appendChild(evBadge(hintScores.get(mv),mv===bestMove));
+      b.appendChild(evBadge(hintScores.get(mv),isBest(mv)));
     ch.appendChild(b);return b;
   };
   if(myTurn){
@@ -850,12 +887,17 @@ function renderHandAndChips(){
         // zeigt den besseren der beiden Werte an.
         if(hintScores&&hintScores.has(mK))
           chip.appendChild(evBadge(Math.max(hintScores.get(mK),hintScores.get(mD)),
-                                   mK===bestMove||mD===bestMove));
+                                   isBest(mK)||isBest(mD)));
       }
       if(moves.includes(M_CLOSE))addChip("Zudrehen","danger",()=>doMove(M_CLOSE),M_CLOSE);
-      $("hintline").textContent = S.led>=0
-        ? "Der Gegner hat ausgespielt – bedien oder wirf ab."
-        : "Du spielst aus.";
+      let hl = S.led>=0 ? "Der Gegner hat ausgespielt – bedien oder wirf ab."
+                        : "Du spielst aus.";
+      if(hintScores){
+        const tied=[...hintScores.keys()].filter(isBest).length;
+        hl = tied>1 ? `${tied} Züge sind gleich gut (gold markiert) – such dir einen aus.`
+                    : "Der gold markierte Zug ist der beste.";
+      }
+      $("hintline").textContent=hl;
     }
   }else $("hintline").textContent="";
 
@@ -877,13 +919,45 @@ function renderHandAndChips(){
       el.classList.add("playable");
       if(pendingMarriage>=0)el.classList.add("glow");
       el.onclick=()=>doMove(mv);
-      if(hintScores&&hintScores.has(mv))el.appendChild(evBadge(hintScores.get(mv),mv===bestMove));
+      if(hintScores&&hintScores.has(mv))el.appendChild(evBadge(hintScores.get(mv),isBest(mv)));
     }else if(myTurn){
       el.classList.add("dim");
       el.onclick=()=>{el.classList.add("shake");setTimeout(()=>el.classList.remove("shake"),300);};
     }
     mh.appendChild(el);
   }
+}
+
+function renderTricks(){
+  const box=$("tricks");box.innerHTML="";
+  const mine=wonTricks[HUMAN];
+  const melds=S.meldLog.filter(m=>m[0]===HUMAN);
+  $("tricksCnt").textContent = mine.length ? `${mine.length} · ${S.trickPts[HUMAN]} Punkte` : "";
+  if(!mine.length&&!melds.length){
+    box.innerHTML=`<div style="color:var(--muted);font-size:13px">Noch keinen Stich gemacht.</div>`;
+    return;
+  }
+  mine.forEach((t,i)=>{
+    const row=document.createElement("div");row.className="trick-row";
+    row.innerHTML=`<span class="no">${i+1}</span>`;
+    for(const x of t.cards){
+      const s=document.createElement("span");
+      s.className="mc"+(SUIT_RED[suitOf(x.card)]?" red":"")+(x.player===HUMAN?" mine":"");
+      s.textContent=RANKS[rankOf(x.card)]+SUIT_SYM[suitOf(x.card)];
+      s.title=x.player===HUMAN?"deine Karte":"Karte des Gegners";
+      row.appendChild(s);
+    }
+    const sum=document.createElement("span");sum.className="sum";sum.textContent=t.pts;
+    row.appendChild(sum);box.appendChild(row);
+  });
+  for(const [,su,pts] of melds){
+    const d=document.createElement("div");d.className="meld-row";
+    d.textContent=`Ansage ${pts} ${SUIT_SYM[su]}${S.hasTrick[HUMAN]?"":" (zählt erst mit einem Stich)"}`;
+    box.appendChild(d);
+  }
+  const tot=document.createElement("div");tot.className="tricktotal";
+  tot.textContent=`Summe: ${score(S,HUMAN)} Punkte · noch ${Math.max(0,66-score(S,HUMAN))} bis 66`;
+  box.appendChild(tot);
 }
 
 function renderMemo(){
@@ -951,9 +1025,9 @@ function showCoach(s,p,move,scores){
       <span style="color:var(--muted)">(${bv>=0?"+":""}${bv.toFixed(2)} · ${delta.toFixed(2)} besser)</span></div>`:""}
     ${tips.length?`<ul class="tips">${tips.map(t=>`<li>${t}</li>`).join("")}</ul>`:""}
     <div class="count">
-      Du ${me} Augen · noch ${Math.max(0,66-me)} bis 66
+      Du ${me} Punkte · noch ${Math.max(0,66-me)} bis 66
       <div class="meter"><i style="width:${Math.min(100,me/66*100)}%"></i></div>
-      Gegner ${opp} Augen · noch ${Math.max(0,66-opp)}
+      Gegner ${opp} Punkte · noch ${Math.max(0,66-opp)}
       <div class="meter opp"><i style="width:${Math.min(100,opp/66*100)}%"></i></div>
     </div>`;
 }
@@ -985,7 +1059,8 @@ async function applyVisual(m,player){
     await sleep(900);
     const w=S.lastTrickWinner;
     const pts=valOf(before.led)+valOf(c);
-    logLine(`&nbsp;&nbsp;→ Stich (${pts} Augen) an ${w===HUMAN?"<b>dich</b>":"den Gegner"}`);
+    wonTricks[w].push({cards:tableCards.slice(),pts});
+    logLine(`&nbsp;&nbsp;→ Stich (${pts} Punkte) an ${w===HUMAN?"<b>dich</b>":"den Gegner"}`);
     tableCards=[];
     render();
     await sleep(160);
@@ -1018,7 +1093,7 @@ async function finishHand(){
   $("resultBody").innerHTML=`
     <div class="big" style="color:${w===HUMAN?"var(--good)":"var(--bad)"}">
       ${w===HUMAN?"Blatt gewonnen":"Blatt verloren"} – ${resultText(S)}</div>
-    <div class="sub">Augen: du ${score(S,HUMAN)} · Gegner ${score(S,BOT)}
+    <div class="sub">Punkte: du ${score(S,HUMAN)} · Gegner ${score(S,BOT)}
       &nbsp;·&nbsp; Bummerl ${G.bummerl[HUMAN]} : ${G.bummerl[BOT]}</div>
     ${st.length?`<div class="sub" style="margin-top:10px">
       Deine ${st.length} Züge:
@@ -1040,7 +1115,7 @@ async function finishHand(){
 
 async function newHand(){
   G.dealer=1-G.dealer;
-  G.handNo++;G.stats=[];hintScores=null;tableCards=[];
+  G.handNo++;G.stats=[];hintScores=null;tableCards=[];wonTricks=[[],[]];
   S=newDeal(G.dealer);
   $("log").innerHTML="";
   logLine(`<b>Blatt ${G.handNo}</b> · Trumpf ${SUIT_NAME[S.trump]} ${SUIT_SYM[S.trump]} (${cardStr(faceUp(S))} offen)`);
@@ -1060,6 +1135,9 @@ $("level").onchange=e=>{G.level=e.target.value;};
 $("btnCoach").onclick=e=>{G.coachOn=!G.coachOn;e.target.textContent=G.coachOn?"An":"Aus";};
 $("btnHint").onclick=()=>{
   if(busy||!S||S.over||S.toMove!==HUMAN)return;
+  // Schon gerechnet? Dann NICHT neu würfeln – sonst tanzen die Zahlen bei
+  // jedem Klick um den Stichprobenfehler herum.
+  if(hintScores){render();return;}
   const btn=$("btnHint");btn.textContent="rechne …";btn.classList.add("busy");
   setTimeout(()=>{
     hintScores=evaluateMoves(S,HUMAN,samplesForCoach());
@@ -1070,19 +1148,19 @@ $("btnHint").onclick=()=>{
 
 const RULES_HTML=`
 <h3>Ziel</h3>
-<p>66 Augen aus Stichen und Ansagen. Wer sie erreicht, gewinnt das Blatt sofort
+<p>66 Punkte aus Stichen und Ansagen. Wer sie erreicht, gewinnt das Blatt sofort
 (das Programm sagt automatisch an).</p>
 <h3>Karten</h3>
 <table><tr><td>Ass</td><td>11</td><td>Zehn</td><td>10</td><td>König</td><td>4</td>
 <td>Dame</td><td>3</td><td>Bube</td><td>2</td></tr></table>
-<p>20 Karten, zusammen 120 Augen. Jeder bekommt 5, eine Karte liegt offen und
+<p>20 Karten, zusammen 120 Punkte. Jeder bekommt 5, eine Karte liegt offen und
 bestimmt den Trumpf, die übrigen 10 bilden den Talon. Der Nichtgeber spielt aus.</p>
 <h3>Offener Talon</h3>
 <ul>
 <li>Kein Farb- und kein Stichzwang – du darfst alles spielen.</li>
 <li>Nach jedem Stich zieht der Stichgewinner zuerst nach.</li>
 <li>Den <b>Trumpf-Buben</b> darfst du beim Ausspielen gegen die offene Trumpfkarte tauschen.</li>
-<li><b>Ansage</b>: König + Dame derselben Farbe = 20 Augen, in Trumpf 40. Nur beim
+<li><b>Ansage</b>: König + Dame derselben Farbe = 20 Punkte, in Trumpf 40. Nur beim
 Ausspielen, und du musst eine der beiden Karten dazu ausspielen. Sie zählt erst,
 wenn du einen Stich gemacht hast.</li>
 </ul>
@@ -1091,9 +1169,12 @@ wenn du einen Stich gemacht hast.</li>
 Stichzwang</b> (bedienen, wenn möglich überstechen, sonst trumpfen) und es wird
 nicht mehr nachgezogen. Du verpflichtest dich, 66 zu erreichen.</p>
 <h3>Wertung</h3>
+<p>Kartenpunkte zählen bis 66. Was du für das gewonnene Blatt bekommst,
+sind <b>Bummerl-Punkte</b> – das ist eine andere Währung:</p>
 <table>
-<tr><td>Gegner hat 33+ Augen</td><td><b>1</b></td></tr>
-<tr><td>Gegner hat 1–32 Augen</td><td><b>2</b> (Schneider)</td></tr>
+<tr><td><i>Stand des Gegners</i></td><td><i>Bummerl-Punkte</i></td></tr>
+<tr><td>Gegner hat 33+ Punkte</td><td><b>1</b></td></tr>
+<tr><td>Gegner hat 1–32 Punkte</td><td><b>2</b> (Schneider)</td></tr>
 <tr><td>Gegner hat keinen Stich</td><td><b>3</b> (Schwarz)</td></tr>
 <tr><td>Zudrehen misslungen</td><td><b>2</b>, ohne Stich des Gegners <b>3</b></td></tr>
 <tr><td>Niemand erreicht 66</td><td><b>1</b> für den letzten Stich</td></tr>
@@ -1105,7 +1186,7 @@ const STRAT_HTML=`
 <h3>Zählen</h3>
 <ul>
 <li>Zähle in jedem Stich mit. 66 ist das Ziel, <b>33</b> die zweite Marke: ab 33
-Augen verliert der Gegner nur noch 1 statt 2 Punkte.</li>
+Punkten verliert der Gegner nur noch 1 statt 2 Bummerl-Punkte.</li>
 <li>Merke dir die unbekannten Karten in dieser Reihenfolge: Trümpfe, Asse, Zehner.
 Die Merkhilfe rechts nimmt dir das ab – gewöhn es dir trotzdem selbst an.</li>
 </ul>
@@ -1129,7 +1210,7 @@ decke sie lieber mit dem König.</li>
 </ul>
 <h3>Zudrehen</h3>
 <ul>
-<li>Rechne: eigene Augen + sichere Stiche + die Augen, die der Gegner zulegen muss.
+<li>Rechne: eigene Punkte + sichere Stiche + die Punkte, die der Gegner zulegen muss.
 Kommst du auf 66, dreh zu.</li>
 <li>Häufigster Fehler: nur zudrehen, wenn es hundertprozentig sicher ist. Wer jedes
 Zudrehen gewinnt, dreht zu selten zu.</li>
@@ -1150,7 +1231,7 @@ ist einen Bummerl-Punkt wert.</li>
 <p>Für jeden möglichen Zug werden die unbekannten Karten viele Male zufällig, aber
 konsistent verteilt (alles, was du gesehen hast, wird berücksichtigt), das Blatt
 zu Ende gespielt und das Endspiel exakt gelöst. Die Zahl ist der erwartete
-<b>Bummerl-Ertrag</b> von +3 bis −3 – nicht die Augen.</p>`;
+<b>Bummerl-Ertrag</b> von +3 bis −3 – nicht die Punkte.</p>`;
 
 function openDlg(title,html){$("dlgTitle").textContent=title;$("dlgBody").innerHTML=html;$("dlg").showModal();}
 $("btnRules").onclick=()=>openDlg("Regeln",RULES_HTML);
@@ -1162,6 +1243,11 @@ document.addEventListener("keydown",e=>{
     const i=+e.key-1;if(els[i])els[i].click();
   }
 });
+
+document.querySelectorAll("h2.tog").forEach(h=>{
+  h.onclick=()=>$(h.dataset.panel).classList.toggle("collapsed");
+});
+$("verTag").textContent="v"+VERSION;
 
 newBummerl();
 </script>

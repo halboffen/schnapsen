@@ -55,7 +55,7 @@ class Session:
                 col = GREEN if s.last_trick_winner == HUMAN else YELLOW
                 print(
                     self.game.ui.c(
-                        f"  → Stich ({pts} Augen) an "
+                        f"  → Stich ({pts} Punkte) an "
                         + ("dich" if s.last_trick_winner == HUMAN else "den Gegner"),
                         col,
                     )
@@ -152,7 +152,7 @@ class Session:
             pts = before.led.value + (second.value if second else 0)
             print(
                 g.ui.c(
-                    f"  → Stich ({pts} Augen) an "
+                    f"  → Stich ({pts} Punkte) an "
                     + ("dich" if s.last_trick_winner == HUMAN else "den Gegner"),
                     GREEN if s.last_trick_winner == HUMAN else YELLOW,
                 )

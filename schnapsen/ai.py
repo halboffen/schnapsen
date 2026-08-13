@@ -83,7 +83,7 @@ def _sure_winner(s: State, p: int, c: Card) -> bool:
 
 
 def _closing_estimate(s: State, p: int) -> int:
-    """Grobe Schaetzung der Augen, die p nach dem Zudrehen noch holt."""
+    """Grobe Schaetzung der Punkte, die p nach dem Zudrehen noch holt."""
     total = 0
     hand = list(s.hands[p])
     opp_trumps = [o for o in s.hands[1 - p] if o.suit == s.trump]

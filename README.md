@@ -55,11 +55,12 @@ Kartencodes: Rang `A 10 K D B` + Farbe `H`=Herz♥, `K`=Karo♦, `P`=Pik♠,
    Besser: D♠ spielen (-1.15, 0.85 besser)
    • A♠ anzuspielen ist riskant: es sind noch 4 Trümpfe unterwegs, der Gegner
      darf vor dem Zudrehen frei stechen.
-   Zählstand: du 26 Augen (noch 40 bis 66) · Gegner 19 Augen (noch 47)
+   Zählstand: du 26 Punkte (noch 40 bis 66) · Gegner 19 Punkte (noch 47)
 ```
 
 * Die Zahl in Klammern ist der **erwartete Bummerl-Ertrag** des Zuges,
-  von `+3` (du gewinnst schwarz) bis `-3`. Nicht die Augen!
+  von `+3` (du gewinnst schwarz) bis `-3`. Das sind Bummerl-Punkte, nicht die
+  Kartenpunkte – siehe [Was die Zahlen bedeuten](#was-die-zahlen-bedeuten).
 * `Besser: …` nennt den stärksten Zug und wie viel er wert gewesen wäre.
 * Die Stichpunkte darunter sind die eigentliche Lektion: konkrete
   Schnapsen-Regeln, angewendet auf genau diese Stellung.
@@ -69,6 +70,25 @@ Kartencodes: Rang `A 10 K D B` + Farbe `H`=Herz♥, `K`=Karo♦, `P`=Pik♠,
 Ein Hinweis zur Lesart: fällt die Bewertung aller Züge gleich schlecht aus, ist
 die Stellung schon verloren – dann lag der Fehler früher. Der Trainer sagt das
 auch dazu.
+
+## Was die Zahlen bedeuten
+
+`+1.00` heißt: *dieser Zug ist im Schnitt einen Bummerl-Punkt wert.* Gemeint ist
+die Währung, in der das Bummerl von 7 auf 0 gezählt wird – nicht die
+Kartenpunkte bis 66. Die Skala reicht von `+3` (Blatt schwarz gewonnen) bis
+`−3` (schwarz verloren).
+
+Es ist ein **Erwartungswert**, kein Versprechen: `+1.00` kann heißen „gewinnt
+fast immer 1 Punkt“, aber auch „gewinnt oft 2 und verliert manchmal 1“. Wichtig
+ist fast nie die absolute Zahl, sondern der **Abstand zwischen zwei Zügen** –
+er sagt dir, was der Fehler gekostet hat.
+
+Der Wert ist ein Mittel über zufällige Kartenverteilungen und daher eine
+Schätzung mit Rauschen (gemessen etwa ±0.07). Der Hinweis wird deshalb pro
+Stellung **einmal** berechnet und gemerkt: Nochmal klicken zeigt dieselben
+Zahlen. Liegen mehrere Züge dicht beieinander, markiert das Programm sie alle
+gold und schreibt „N Züge sind gleich gut“ – die Behauptung, einer davon sei
+*der* beste, wäre gegenüber der Messgenauigkeit gelogen.
 
 ## Wie die Bewertung zustande kommt
 
@@ -86,6 +106,10 @@ statt geraten:
 4. Für alle Züge werden **dieselben** Welten benutzt (common random numbers), die
    Vergleiche sind dadurch rauscharm.
 
+Stichproben: 300 pro Zug, im zugedrehten Endspiel bis 400 (dort wird jede Welt
+exakt gelöst, das lohnt sich). Ist der Talon leer, liegt die Gegnerhand
+eindeutig fest – dann wird exakt statt geschätzt gerechnet.
+
 Der Gegner benutzt exakt denselben Code – der Trainer bewertet also nach der
 gleichen Messlatte, an der er dich schlagen will.
 
@@ -93,19 +117,19 @@ gleichen Messlatte, an der er dich schlagen will.
 
 Österreichische Standardregeln nach [pagat.com](https://www.pagat.com/marriage/schnaps.html):
 
-* 20 Karten, Ass 11 / Zehn 10 / König 4 / Dame 3 / Bube 2 (zusammen 120 Augen).
+* 20 Karten, Ass 11 / Zehn 10 / König 4 / Dame 3 / Bube 2 (zusammen 120 Punkte).
 * 5 Karten je Spieler, eine offene Trumpfkarte, Talon aus 10 Karten.
   Der Nichtgeber spielt aus.
 * Bei offenem Talon: kein Farb- und kein Stichzwang; nach jedem Stich zieht der
   Stichgewinner zuerst nach.
 * Trumpf-Bube gegen die offene Trumpfkarte tauschen: nur beim Ausspielen, nur
   solange der Talon offen und nicht leer ist.
-* Ansage König + Dame = 20 Augen, in Trumpf 40. Nur beim Ausspielen; du darfst
+* Ansage König + Dame = 20 Punkte, in Trumpf 40. Nur beim Ausspielen; du darfst
   wahlweise König **oder** Dame dazu ausspielen. Ansagen zählen erst, wenn du
   einen Stich gemacht hast.
 * Zudrehen beim Ausspielen. Danach Farb- und Stichzwang und kein Nachziehen.
-* Bei 66 Augen ist das Blatt sofort beendet (das Programm sagt automatisch an).
-* Wertung: Gegner 33+ Augen → 1, Gegner 1–32 Augen → 2 (Schneider), Gegner ohne
+* Bei 66 Punkten ist das Blatt sofort beendet (das Programm sagt automatisch an).
+* Wertung: Gegner 33+ Punkte → 1, Gegner 1–32 Punkte → 2 (Schneider), Gegner ohne
   Stich → 3 (Schwarz). Misslungenes Zudrehen: Gegner bekommt 2 bzw. 3, gemessen
   an seinem Stand **im Moment des Zudrehens**. Erreicht niemand 66, gewinnt der
   letzte Stich mit 1 Punkt.
@@ -120,8 +144,8 @@ zudrehen, und Ansagen erst nach dem ersten eigenen Stich machen.
 
 Kurzfassung dessen, was der Trainer prüft (ausführlich im Spiel über `s`):
 
-**Zählen.** 66 ist das Ziel, 33 die zweitwichtigste Marke – ab 33 Augen verliert
-der Gegner nur noch 1 statt 2 Punkte. Merke dir die unbekannten Karten in dieser
+**Zählen.** 66 ist das Ziel, 33 die zweitwichtigste Marke – ab 33 Punkten verliert
+der Gegner nur noch 1 statt 2 Bummerl-Punkte. Merke dir die unbekannten Karten in dieser
 Reihenfolge: Trümpfe, Asse, Zehner.
 
 **Tauschen und ansagen.** Den Trumpf-Buben zu tauschen ist praktisch nie falsch.
@@ -135,7 +159,7 @@ Trumpfkontrolle zu haben. Gegnerische Asse und Zehner nimmst du am liebsten mit
 Zehn oder Ass derselben Farbe – dann bleiben König und Dame für eine Ansage
 übrig. Musst du abwerfen, wirf die billigste Karte; eine blanke Zehn ist teuer.
 
-**Zudrehen.** Rechne: eigene Augen + sichere Stiche + die Augen, die der Gegner
+**Zudrehen.** Rechne: eigene Punkte + sichere Stiche + die Punkte, die der Gegner
 zulegen muss. Der häufigste Fehler ist, nur bei absoluter Sicherheit zuzudrehen –
 wer jedes Zudrehen gewinnt, dreht zu selten zu. Umgekehrt gibt es das erzwungene
 Zudrehen: wenn Weiterspielen fast sicher verliert, ist ein riskantes Zudrehen die
@@ -154,6 +178,18 @@ den Stichrückgewinn aufheben.
 * [Schnapsen Strategy Guide (Blog)](http://schnapsenstrategy.blogspot.com/)
 * [schnopsn.com – Wann darf/soll man zudrehen?](https://schnopsn.com/blog/donkeycat_faq_20210609200548920-05f3de212ff55af)
 * [gamerules.com – Schnapsen](https://gamerules.com/rules/schnapsen-%EF%BB%BF/)
+
+## Bedienung im Browser
+
+Karte anklicken zum Spielen; nicht erlaubte Karten sind ausgegraut. Ansage,
+Bubentausch und Zudrehen liegen als Knöpfe über der Hand – nach einem Klick auf
+eine Ansage leuchten nur noch König und Dame dieser Farbe. Tastatur: `1`–`9`
+für Karten, `h` für den Hinweis.
+
+Rechts: Trainer, **deine Stiche** (mit deiner Karte hervorgehoben und laufender
+Summe), Merkhilfe und Verlauf. Die drei unteren Panels lassen sich über ihre
+Überschrift ein- und ausklappen. Die eigenen Stiche nachzusehen ist beim
+normalen Schnapsen erlaubt; nur die Turniervariante verbietet es.
 
 ## Aufbau
 

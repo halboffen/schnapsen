@@ -57,7 +57,7 @@ def tips(s: State, p: int, move, best, scores: dict) -> list[str]:
     if can_exchange(s, p) and kind != "exchange":
         out.append(
             f"Tausche zuerst den Buben gegen die offene Trumpfkarte ({s.face_up}). "
-            "Das kostet nichts und ist fast nie falsch – du tauschst 2 Augen gegen "
+            "Das kostet nichts und ist fast nie falsch – du tauschst 2 Punkte gegen "
             f"{s.face_up.value} und bekommst einen stärkeren Trumpf."
         )
 
@@ -83,14 +83,14 @@ def tips(s: State, p: int, move, best, scores: dict) -> list[str]:
         close_val = scores.get(("close",))
         if kind != "close" and close_val is not None and close_val - scores[move] > OK:
             out.append(
-                f"Hier war Zudrehen der beste Zug: du hast {s.score(p)} Augen, "
+                f"Hier war Zudrehen der beste Zug: du hast {s.score(p)} Punkte, "
                 f"noch {66 - s.score(p)} fehlen. Wer nur zudreht, wenn er sicher "
                 "gewinnt, dreht viel zu selten zu."
             )
     if kind == "close" and scores[best] - scores[move] > OK:
         out.append(
-            f"Zu früh zugedreht: du brauchst noch {66 - s.score(p)} Augen – und zwar "
-            "ohne Nachziehen. Faustregel: zähle deine sicheren Stiche plus die Augen, "
+            f"Zu früh zugedreht: du brauchst noch {66 - s.score(p)} Punkte – und zwar "
+            "ohne Nachziehen. Faustregel: zähle deine sicheren Stiche plus die Punkte, "
             "die der Gegner dazulegen muss."
         )
 
@@ -124,7 +124,7 @@ def tips(s: State, p: int, move, best, scores: dict) -> list[str]:
             if led.value >= 10:
                 cheapest = min(winners, key=lambda x: (x.suit == trump, x.value))
                 out.append(
-                    f"Der Gegner hat {led} gelegt – {led.value} Augen liegen auf dem "
+                    f"Der Gegner hat {led} gelegt – {led.value} Punkte liegen auf dem "
                     f"Tisch. Solche Stiche solltest du nehmen ({cheapest} hätte gereicht); "
                     "Ass und Zehn des Gegners abzustechen lohnt fast immer."
                 )
@@ -137,7 +137,7 @@ def tips(s: State, p: int, move, best, scores: dict) -> list[str]:
                     out.append(
                         f"Wenn du den Stich schon hergibst, wirf die billigste Karte "
                         f"({cheap} statt {c}) – jede Zehn und jedes Ass, das du "
-                        "abwirfst, schenkt dem Gegner Augen."
+                        "abwirfst, schenkt dem Gegner Punkte."
                     )
         if beats(c, led, trump) and winners:
             cheapest = min(winners, key=lambda x: (x.suit == trump, x.value, -x.order))
@@ -184,8 +184,8 @@ def counting_line(s: State, p: int) -> str:
     me = s.score(p)
     opp = s.score(1 - p)
     return (
-        f"Zählstand: du {me} Augen (noch {max(0, 66 - me)} bis 66) · "
-        f"Gegner {opp} Augen (noch {max(0, 66 - opp)})"
+        f"Zählstand: du {me} Punkte (noch {max(0, 66 - me)} bis 66) · "
+        f"Gegner {opp} Punkte (noch {max(0, 66 - opp)})"
     )
 
 

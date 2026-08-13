@@ -62,7 +62,7 @@ class State:
         return s
 
     def score(self, p: int) -> int:
-        """Zaehlende Augen: Stichpunkte plus Ansagen (Ansagen zaehlen nur mit Stich)."""
+        """Zaehlende Punkte: Stichpunkte plus Ansagen (Ansagen zaehlen nur mit Stich)."""
         return self.trick_pts[p] + (self.melds[p] if self.has_trick[p] else 0)
 
     @property

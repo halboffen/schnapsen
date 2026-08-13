@@ -67,18 +67,18 @@ RULES = """
 Kurzregeln Schnapsen
   20 Karten. Werte: Ass 11, Zehn 10, König 4, Dame 3, Bube 2 (zusammen 120).
   Jeder bekommt 5 Karten, eine Karte liegt offen und bestimmt den Trumpf.
-  Ziel: 66 Augen. Wer sie erreicht, sagt sofort an und gewinnt das Blatt.
+  Ziel: 66 Punkte. Wer sie erreicht, sagt sofort an und gewinnt das Blatt.
 
   Solange der Talon offen ist: kein Farb- und kein Stichzwang. Nach jedem Stich
   zieht der Stichgewinner zuerst nach.
   Trumpf-Bube: darf man beim Ausspielen gegen die offene Trumpfkarte tauschen.
-  Ansage: König + Dame derselben Farbe = 20 Augen, in Trumpf 40. Nur beim
+  Ansage: König + Dame derselben Farbe = 20 Punkte, in Trumpf 40. Nur beim
   Ausspielen, und sie zählt erst, wenn man einen Stich gemacht hat.
   Zudrehen: beim Ausspielen möglich. Ab dann Farb- und Stichzwang, kein Nachziehen.
 
   Bummerl-Punkte für das gewonnene Blatt:
-    Gegner hat 33+ Augen ......... 1
-    Gegner hat 1–32 Augen ........ 2 (Schneider)
+    Gegner hat 33+ Punkte ......... 1
+    Gegner hat 1–32 Punkte ........ 2 (Schneider)
     Gegner hat keinen Stich ...... 3 (Schwarz)
   Zudrehen misslungen: der Gegner bekommt 2 (bzw. 3 ohne Stich).
   Ohne 66 entscheidet der letzte Stich: 1 Punkt.
@@ -90,9 +90,9 @@ STRATEGY = """
 Strategie-Spickzettel
 
   ZÄHLEN
-   • Zähle in jedem Stich mit: eigene Augen, gegnerische Augen, und wie weit
-     beide von 66 entfernt sind. 33 ist die zweite wichtige Marke – ab 33 Augen
-     verliert der Gegner nur noch 1 statt 2 Punkte.
+   • Zähle in jedem Stich mit: eigene Punkte, gegnerische Punkte, und wie weit
+     beide von 66 entfernt sind. 33 ist die zweite wichtige Marke – ab 33 Punkten
+     verliert der Gegner nur noch 1 statt 2 Bummerl-Punkte.
    • Merke dir die noch unbekannten Karten – zuerst die Trümpfe, dann Asse und
      Zehner. Pro Farbe sind es nie mehr als vier.
 
@@ -116,8 +116,8 @@ Strategie-Spickzettel
      decke sie lieber mit dem König.
 
   ZUDREHEN
-   • Rechne: eigene Augen + sichere Stiche (Trümpfe, die alles schlagen; Asse in
-     Farben, in denen niemand mehr stechen kann) + die Augen, die der Gegner
+   • Rechne: eigene Punkte + sichere Stiche (Trümpfe, die alles schlagen; Asse in
+     Farben, in denen niemand mehr stechen kann) + die Punkte, die der Gegner
      zulegen muss. Kommst du auf 66, dreh zu.
    • Häufigster Fehler: nur zudrehen, wenn es hundertprozentig sicher ist. Wer
      jedes Zudrehen gewinnt, dreht zu selten zu.
@@ -178,7 +178,7 @@ class Game:
         extra = f"   offen: {u.card(face)}" if face and s.closed_by is None else ""
         print(f"Talon: {talon}{who_closed}{extra}")
         print(
-            f"Augen: {u.c(f'du {s.score(HUMAN)}', GREEN)}  ·  "
+            f"Punkte: {u.c(f'du {s.score(HUMAN)}', GREEN)}  ·  "
             f"Gegner {s.score(BOT)}   Karten Gegner: {len(s.hands[BOT])}"
         )
         if s.led is not None:
@@ -346,7 +346,7 @@ class Game:
                 pts = before.led.value + (second.value if second else 0)
                 print(
                     u.c(
-                        f"  → Stich ({pts} Augen) an "
+                        f"  → Stich ({pts} Punkte) an "
                         + ("dich" if winner == HUMAN else "den Gegner"),
                         GREEN if winner == HUMAN else RED,
                     )
@@ -367,7 +367,7 @@ class Game:
             + f": {result_text(s)}"
         )
         print(
-            f"Endstand Augen: du {s.score(HUMAN)} · Gegner {s.score(BOT)}   "
+            f"Endstand Punkte: du {s.score(HUMAN)} · Gegner {s.score(BOT)}   "
             f"Bummerl: du {self.bummerl[HUMAN]} : {self.bummerl[BOT]} Gegner"
         )
         self.show_hand_stats()
