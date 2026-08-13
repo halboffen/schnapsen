@@ -773,7 +773,7 @@ function tipsFor(s,p,move,best,scores){
 /* ==========================================================================
    5. Oberfläche
    ========================================================================== */
-const VERSION="1.1.1";
+const VERSION="1.1.2";
 const HUMAN=0,BOT=1;
 const $=id=>document.getElementById(id);
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -1207,8 +1207,12 @@ Kontrolle.</li>
 <li>Spiele kleine Karten an (Buben, tote Farben) und behalte Asse und Zehner.</li>
 <li>Jeder Trumpf, den der Gegner verbraucht und du nicht, erhöht deine Chance auf
 die Trumpfkontrolle am Ende.</li>
-<li>Gegnerische Asse und Zehner nimmst du am liebsten mit Zehn oder Ass derselben
-Farbe – dann bleiben König und Dame für eine Ansage übrig.</li>
+<li>Willst du einen Stich in einer Farbe holen, nimm ihn mit <b>Zehn oder Ass</b>
+statt mit König oder Dame: du sammelst die dicken Punkte und behältst König und
+Dame für eine Ansage.</li>
+<li>Das Ass des Gegners bekommst du nur mit <b>Trumpf</b>, seine Zehn nur mit dem
+Ass derselben Farbe oder mit Trumpf. Beides lohnt fast immer – sonst wandern 10
+oder 11 Punkte zu ihm.</li>
 <li>Musst du abwerfen, wirf die billigste Karte. Eine blanke Zehn ist teuer –
 decke sie lieber mit dem König.</li>
 </ul>

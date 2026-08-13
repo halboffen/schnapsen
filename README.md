@@ -157,9 +157,11 @@ und Dame einer Farbe nicht einzeln wegwerfen, solange die Ansage lebt.
 **Offener Talon.** Führe früh keinen Trumpf aus: der Gegner muss nicht bedienen,
 du verschenkst Kontrolle. Spiele stattdessen kleine Karten an. Jeder Trumpf, den
 der Gegner verbraucht und du nicht, erhöht deine Chance, am Ende die
-Trumpfkontrolle zu haben. Gegnerische Asse und Zehner nimmst du am liebsten mit
-Zehn oder Ass derselben Farbe – dann bleiben König und Dame für eine Ansage
-übrig. Musst du abwerfen, wirf die billigste Karte; eine blanke Zehn ist teuer.
+Trumpfkontrolle zu haben. Willst du einen Stich in einer Farbe holen, nimm ihn mit
+Zehn oder Ass statt mit König oder Dame – dicke Punkte, und König und Dame bleiben
+für eine Ansage. Das Ass des Gegners bekommst du dagegen nur mit Trumpf, seine
+Zehn nur mit dem Ass derselben Farbe oder mit Trumpf; beides lohnt fast immer.
+Musst du abwerfen, wirf die billigste Karte; eine blanke Zehn ist teuer.
 
 **Zudrehen.** Rechne: eigene Punkte + sichere Stiche + die Punkte, die der Gegner
 zulegen muss. Der häufigste Fehler ist, nur bei absoluter Sicherheit zuzudrehen –

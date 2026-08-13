@@ -110,8 +110,11 @@ Strategie-Spickzettel
    • Sticht der Gegner deine kleinen Karten mit Trumpf, gewinnst du das
      Trumpfrennen: Jeder Trumpf, den er verbraucht und du nicht, erhöht deine
      Chance, am Ende die Trumpfkontrolle zu haben.
-   • Nimm gegnerische Asse und Zehner, wenn es geht – am liebsten mit Zehn oder
-     Ass derselben Farbe, dann bleiben König/Dame für eine Ansage übrig.
+   • Willst du einen Stich in einer Farbe holen, nimm ihn mit Zehn oder Ass statt
+     mit König oder Dame: dicke Punkte, und König/Dame bleiben für eine Ansage.
+   • Das Ass des Gegners bekommst du nur mit Trumpf, seine Zehn nur mit dem Ass
+     derselben Farbe oder mit Trumpf. Beides lohnt fast immer – sonst wandern
+     10 oder 11 Punkte zu ihm.
    • Musst du abwerfen, wirf die billigste Karte. Eine blanke Zehn ist teuer –
      decke sie lieber mit dem König.
 
