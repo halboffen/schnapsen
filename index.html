@@ -211,6 +211,31 @@ aside{display:flex;flex-direction:column;gap:12px;position:sticky;top:64px}
 .meter{height:6px;border-radius:3px;background:var(--panel2);overflow:hidden;margin-top:5px}
 .meter i{display:block;height:100%;background:var(--good)}
 .meter.opp i{background:var(--bad)}
+.replaybar{display:flex;gap:7px;align-items:center;justify-content:center;flex-wrap:wrap;
+  background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.16);border-radius:999px;
+  padding:6px 12px;color:#fff;font-size:13px;margin-top:4px}
+.replaybar button{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);
+  color:#fff;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:13px;transition:.15s}
+.replaybar button:hover{background:rgba(255,255,255,.26)}
+.replaybar button[disabled]{opacity:.32;cursor:default}
+.replaybar button.gold{border-color:var(--gold);background:rgba(201,162,39,.3)}
+.replaybar .pos{font-variant-numeric:tabular-nums;min-width:6.5em;text-align:center}
+.replaybar select{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);
+  color:#fff;border-radius:8px;padding:4px 6px;font-size:13px}
+.replaybar select option{color:#111}
+.movelist{max-height:280px;overflow:auto;font-size:13px}
+.mv{display:flex;gap:7px;align-items:center;padding:3px 6px;border-radius:6px;cursor:pointer}
+.mv:hover{background:var(--panel2)}
+.mv.cur{background:var(--panel2);box-shadow:inset 0 0 0 1px var(--gold)}
+.mv .n{color:var(--muted);min-width:1.8em;font-variant-numeric:tabular-nums}
+.mv .who{color:var(--muted);min-width:3.8em}
+.mv .dot{width:8px;height:8px;border-radius:50%;flex:0 0 auto}
+.mv .dot.good{background:var(--good)}.mv .dot.mid{background:var(--warn)}.mv .dot.bad{background:var(--bad)}
+.mv .d{margin-left:auto;color:var(--muted);font-variant-numeric:tabular-nums;font-size:12px}
+.mistakes{margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+.variantbadge{background:var(--gold);color:#1c1a17;border-radius:999px;padding:2px 9px;
+  font-size:12px;font-weight:650}
+.card.reveal{box-shadow:0 0 0 2px var(--gold),0 6px 14px rgba(0,0,0,.3)}
 .panel h2.tog{cursor:pointer;display:flex;align-items:center;gap:7px;user-select:none;margin:0}
 .panel h2.tog:hover{color:var(--fg)}
 .panel h2.tog .caret{display:inline-block;transition:transform .15s;font-size:10px}
@@ -286,6 +311,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   </select>
   <button class="btn" id="btnRules">Regeln</button>
   <button class="btn" id="btnStrat">Strategie</button>
+  <button class="btn" id="btnReplay" title="Letztes Blatt Zug für Zug analysieren">Analyse</button>
   <button class="btn primary" id="btnNew">Neues Bummerl</button>
 </header>
 
@@ -313,6 +339,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
       <div class="chips" id="chips"></div>
       <div class="hand" id="myHand"></div>
       <div class="hintline" id="hintline"></div>
+      <div class="replaybar" id="replaybar" style="display:none"></div>
     </div>
   </section>
 
@@ -325,6 +352,14 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
       <div style="display:flex;gap:8px;margin-top:12px">
         <button class="btn" id="btnHint" style="flex:1">Hinweis anzeigen</button>
         <button class="btn" id="btnCoach" title="Trainer-Kommentar an/aus">An</button>
+      </div>
+    </div>
+
+    <div class="panel" id="panelReplay" style="display:none">
+      <h2 class="tog" data-panel="panelReplay"><span class="caret">▾</span> Zugliste</h2>
+      <div class="pbody">
+        <div id="mistakes"></div>
+        <div class="movelist" id="movelist"></div>
       </div>
     </div>
 
@@ -773,20 +808,45 @@ function tipsFor(s,p,move,best,scores){
 /* ==========================================================================
    5. Oberfläche
    ========================================================================== */
-const VERSION="1.1.2";
+const VERSION="1.2.0";
 const HUMAN=0,BOT=1;
 const $=id=>document.getElementById(id);
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 
 let S=null;
-let G={bummerl:[7,7],dealer:BOT,handNo:0,stats:[],sessionStats:[],level:"normal",coachOn:true};
+let G={bummerl:[7,7],dealer:BOT,handNo:0,stats:[],sessionStats:[],level:"normal",
+       coachOn:true,hands:[]};   // hands: abgeschlossene Blätter zum Nachspielen
 let tableCards=[];         // {card, player} – was gerade auf dem Tisch liegt
 let wonTricks=[[],[]];     // gewonnene Stiche je Spieler, nur für die Anzeige
+let rec=null;              // Aufzeichnung des laufenden Blattes
+let pendingScores=null;    // Bewertung zum Zug, der gerade gespielt wird
+let mode="play";           // "play" | "replay" | "variant"
+let replayRec=null, replayIdx=0, replayHandIdx=0, revealOpp=true;
+let variantOf=null;        // {handIdx, atIdx, orig} – woraus die Variante entstand
 let pendingMarriage=-1;    // Farbe, für die gerade eine Ansage gewählt wird
 let hintScores=null;
 let busy=false;
 
 const samplesForCoach=()=>Math.max(300,LEVELS[G.level]??60);
+
+const canAct=()=>(mode==="play"||mode==="variant")&&!busy&&S&&!S.over&&S.toMove===HUMAN;
+
+/** Stiche aus einer Aufzeichnung bis zum Schritt `upto` rekonstruieren. */
+function tricksFrom(r,upto){
+  // Eine Variante erbt die Stiche, die vor der Abzweigung schon gefallen sind.
+  const out=r.prior?[r.prior[0].slice(),r.prior[1].slice()]:[[],[]];
+  for(let k=0;k<upto&&k<r.moves.length;k++){
+    const a=r.states[k], b=r.states[k+1];
+    if(a.led>=0&&b.led<0){
+      const second=moveCard(r.moves[k].m);
+      out[b.lastTrickWinner].push({
+        cards:[{card:a.led,player:a.leader},{card:second,player:r.moves[k].player}],
+        pts:valOf(a.led)+valOf(second)});
+    }
+  }
+  return out;
+}
+const currentTricks=()=>mode==="replay"?tricksFrom(replayRec,replayIdx):wonTricks;
 
 /* --- Kartenelemente ------------------------------------------------------ */
 function cardEl(c,{back=false,anim=false}={}){
@@ -820,9 +880,17 @@ function render(){
   $("myPts").textContent=`${score(S,HUMAN)} Punkte`;
   $("oppPts").textContent=`${score(S,BOT)} Punkte`;
 
-  // Gegnerhand (verdeckt)
+  // Gegnerhand – in der Analyse offen, sonst verdeckt
   const oh=$("oppHand");oh.innerHTML="";
-  for(let i=0;i<S.hands[BOT].length;i++)oh.appendChild(cardEl(0,{back:true}));
+  const show=mode==="replay"&&revealOpp;
+  const oppHand=show?S.hands[BOT].slice().sort((a,b)=>{
+      const ta=suitOf(a)===S.trump?0:1,tb=suitOf(b)===S.trump?0:1;
+      return ta-tb||suitOf(a)-suitOf(b)||ordOf(b)-ordOf(a);}):S.hands[BOT];
+  for(const c of oppHand){
+    const el=show?cardEl(c):cardEl(0,{back:true});
+    if(show)el.classList.add("reveal");
+    oh.appendChild(el);
+  }
 
   // Stich
   const tk=$("trick");tk.innerHTML="";
@@ -853,13 +921,14 @@ function render(){
     : (S.talon.length?`Talon · ${S.talon.length}`:"Talon leer");
 
   renderHandAndChips();
+  renderReplayBar();
   renderTricks();
   renderMemo();
   renderStats();
 }
 
 function renderHandAndChips(){
-  const myTurn=!busy&&!S.over&&S.toMove===HUMAN;
+  const myTurn=canAct();
   const moves=myTurn?legalMoves(S):[];
   // Züge, die höchstens TIE unter dem Besten liegen, gelten als gleichwertig –
   // sie als „einen besten Zug" auszugeben wäre gegenüber dem Rauschen gelogen.
@@ -934,7 +1003,7 @@ function renderHandAndChips(){
 
 function renderTricks(){
   const box=$("tricks");box.innerHTML="";
-  const mine=wonTricks[HUMAN];
+  const mine=currentTricks()[HUMAN];
   const melds=S.meldLog.filter(m=>m[0]===HUMAN);
   $("tricksCnt").textContent = mine.length ? `${mine.length} · ${S.trickPts[HUMAN]} Punkte` : "";
   if(!mine.length&&!melds.length){
@@ -1005,12 +1074,12 @@ function logLine(html){
 }
 
 /* --- Trainer-Panel ------------------------------------------------------- */
-function showCoach(s,p,move,scores){
+function showCoach(s,p,move,scores,record=true){
   let best=null,bv=-Infinity;
   for(const [m,v] of scores)if(v>bv){bv=v;best=m;}
   const val=scores.get(move),delta=bv-val;
   const [label,mark,cls]=verdictOf(delta);
-  G.stats.push([label,delta,moveText(s,move),moveText(s,best)]);
+  if(record)G.stats.push([label,delta,moveText(s,move),moveText(s,best)]);
   if(!G.coachOn){$("coachBody").innerHTML=`<div style="color:var(--muted);font-size:13.5px">Trainer ist aus.</div>`;return;}
 
   const head={gut:"Guter Zug",ungenau:"Geht besser",fehler:"Fehler"}[label];
@@ -1043,6 +1112,7 @@ async function doMove(m){
   const before=S;
   const scores=hintScores??evaluateMoves(S,HUMAN,samplesForCoach());
   hintScores=null;
+  pendingScores=scores;
   showCoach(before,HUMAN,m,scores);
   logLine(`<b>Du:</b> ${moveText(before,m)}`);
   await applyVisual(m,HUMAN);
@@ -1057,6 +1127,8 @@ async function applyVisual(m,player){
   const c=moveCard(m);
   if(c>=0)tableCards.push({card:c,player});
   S=applyMove(before,m);
+  if(rec){rec.moves.push({m,player,scores:pendingScores});rec.states.push(S);}
+  pendingScores=null;
   render();
   if(isMarr(m))logLine(`<span style="color:var(--gold)">Ansage ${marrSuit(m)===before.trump?40:20} ${SUIT_SYM[marrSuit(m)]}</span>`);
   if(wasSecond&&c>=0){
@@ -1086,9 +1158,39 @@ async function botTurns(){
 
 async function finishHand(){
   const [w,gp]=handResult(S);
-  G.bummerl[w]=Math.max(0,G.bummerl[w]-gp);
-  G.sessionStats=G.sessionStats.concat(G.stats);
   const st=G.stats;
+  if(rec){rec.result={winner:w,gp,me:score(S,HUMAN),opp:score(S,BOT),stats:st.slice()};}
+
+  if(mode==="variant"){          // Was-wäre-wenn: zählt nicht fürs Bummerl
+    rec.label=`Variante zu ${G.hands[variantOf.handIdx].label}, ab Zug ${variantOf.atIdx+1}`;
+    const myIdx=G.hands.push(rec)-1;
+    logLine(`<b>Variante beendet:</b> ${w===HUMAN?"du gewinnst":"Gegner gewinnt"} ${gp}`);
+    render();
+    const o=variantOf.orig;
+    const diff=(w===HUMAN?gp:-gp)-(o.winner===HUMAN?o.gp:-o.gp);
+    $("resultBody").innerHTML=`
+      <div class="big"><span class="variantbadge">Variante</span></div>
+      <div class="big" style="margin-top:8px;color:${w===HUMAN?"var(--good)":"var(--bad)"}">
+        ${w===HUMAN?"gewonnen":"verloren"} – ${resultText(S)}</div>
+      <div class="sub" style="margin-top:10px">
+        Original: ${o.winner===HUMAN?"+":"−"}${o.gp} &nbsp;·&nbsp;
+        Variante: ${w===HUMAN?"+":"−"}${gp}
+        <b style="color:${diff>0?"var(--good)":diff<0?"var(--bad)":"var(--muted)"}">
+          (${diff>0?"+":""}${diff})</b></div>
+      <div class="sub" style="margin-top:6px">Das Bummerl bleibt davon unberührt.</div>
+      <div style="margin-top:18px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+        <button class="btn primary" id="btnAnaVar">Variante analysieren</button>
+        <button class="btn" id="btnBackAna">Zurück zum Original</button>
+      </div>`;
+    $("dlgResult").showModal();
+    $("btnAnaVar").onclick=()=>{$("dlgResult").close();enterReplay(myIdx);};
+    $("btnBackAna").onclick=()=>{$("dlgResult").close();enterReplay(variantOf.handIdx,variantOf.atIdx);};
+    return;
+  }
+
+  G.bummerl[w]=Math.max(0,G.bummerl[w]-gp);
+  G.sessionStats=G.sessionStats.concat(st);
+  const handIdx=G.hands.push(rec)-1;
   const worst=st.length?st.reduce((a,b)=>b[1]>a[1]?b:a):null;
   logLine(`<b>${w===HUMAN?"Du gewinnst":"Gegner gewinnt"}</b> das Blatt: ${resultText(S)} (${gp})`);
   render();
@@ -1107,10 +1209,12 @@ async function finishHand(){
     ${worst&&worst[1]>GOOD?`<div class="sub" style="margin-top:6px;color:var(--warn)">
       Teuerster Zug: ${worst[2]} – besser war ${worst[3]} (${worst[1].toFixed(2)})</div>`:""}
     ${over?`<div class="big" style="margin-top:16px">${G.bummerl[HUMAN]===0?"Bummerl gewonnen! 🎉":"Bummerl verloren."}</div>`:""}
-    <div style="margin-top:18px">
-      <button class="btn primary" id="btnNext">${over?"Neues Bummerl":"Nächstes Blatt"}</button>
+    <div style="margin-top:18px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+      <button class="btn primary" id="btnAnalyse">Blatt analysieren</button>
+      <button class="btn" id="btnNext">${over?"Neues Bummerl":"Nächstes Blatt"}</button>
     </div>`;
   $("dlgResult").showModal();
+  $("btnAnalyse").onclick=()=>{$("dlgResult").close();enterReplay(handIdx);};
   $("btnNext").onclick=()=>{
     $("dlgResult").close();
     if(over)newBummerl(); else newHand();
@@ -1120,7 +1224,9 @@ async function finishHand(){
 async function newHand(){
   G.dealer=1-G.dealer;
   G.handNo++;G.stats=[];hintScores=null;tableCards=[];wonTricks=[[],[]];
+  mode="play";variantOf=null;
   S=newDeal(G.dealer);
+  rec={label:`Blatt ${G.handNo}`,states:[S],moves:[],result:null};
   $("log").innerHTML="";
   logLine(`<b>Blatt ${G.handNo}</b> · Trumpf ${SUIT_NAME[S.trump]} ${SUIT_SYM[S.trump]} (${cardStr(faceUp(S))} offen)`);
   render();
@@ -1129,16 +1235,197 @@ async function newHand(){
   busy=false;render();
 }
 function newBummerl(){
-  G.bummerl=[7,7];G.dealer=BOT;G.handNo=0;G.stats=[];G.sessionStats=[];
+  G.bummerl=[7,7];G.dealer=BOT;G.handNo=0;G.stats=[];G.sessionStats=[];G.hands=[];
+  exitReplay(true);
   newHand();
+}
+
+/* --- Analyse: Blatt nachspielen ------------------------------------------ */
+let liveSnap=null;          // laufendes Blatt, während man in die Analyse springt
+
+function moveVerdict(mv){
+  if(mv.player!==HUMAN||!mv.scores)return null;
+  let best=-Infinity;
+  for(const v of mv.scores.values())if(v>best)best=v;
+  const delta=best-mv.scores.get(mv.m);
+  const [label,mark,cls]=verdictOf(delta);
+  return {delta,label,mark,cls};
+}
+
+function enterReplay(handIdx,atIdx=0){
+  if(!G.hands.length)return;
+  if((mode==="play"||mode==="variant")&&S&&!S.over)
+    liveSnap={mode,S,tableCards,wonTricks,rec,stats:G.stats.slice(),variantOf};
+  variantOf=null;
+  replayHandIdx=Math.max(0,Math.min(handIdx,G.hands.length-1));
+  replayRec=G.hands[replayHandIdx];
+  mode="replay";busy=false;
+  $("panelReplay").style.display="";
+  gotoStep(atIdx);
+}
+
+function exitReplay(silent=false){
+  mode="play";replayRec=null;variantOf=null;
+  const pr=$("panelReplay");if(pr)pr.style.display="none";
+  const rb=$("replaybar");if(rb){rb.style.display="none";rb.innerHTML="";}
+  if(silent){liveSnap=null;return;}
+  if(liveSnap){            // wir kamen aus einem laufenden Blatt – zurück dorthin
+    mode=liveSnap.mode;variantOf=liveSnap.variantOf;
+    S=liveSnap.S;tableCards=liveSnap.tableCards;wonTricks=liveSnap.wonTricks;
+    rec=liveSnap.rec;G.stats=liveSnap.stats;liveSnap=null;
+    hintScores=null;render();return;
+  }
+  if(G.bummerl[HUMAN]===0||G.bummerl[BOT]===0)newBummerl(); else newHand();
+}
+
+function gotoStep(i){
+  const n=replayRec.states.length-1;
+  replayIdx=Math.max(0,Math.min(i,n));
+  S=replayRec.states[replayIdx];
+  hintScores=null;
+  tableCards=[];
+  if(S.led>=0)tableCards=[{card:S.led,player:S.leader}];
+  else if(replayIdx>0){     // gerade abgeschlossenen Stich noch zeigen
+    const a=replayRec.states[replayIdx-1],mv=replayRec.moves[replayIdx-1];
+    if(a.led>=0)tableCards=[{card:a.led,player:a.leader},
+                            {card:moveCard(mv.m),player:mv.player}];
+  }
+  render();
+  showReplayCoach();
+  renderMoveList();
+}
+
+function showReplayCoach(){
+  const mvs=replayRec.moves;
+  if(replayIdx>=mvs.length){
+    const r=replayRec.result;
+    const bad=(r?.stats||[]).filter(x=>x[0]==="fehler").length;
+    $("coachBody").innerHTML=r?`
+      <div class="verdict"><div class="vtitle">Blatt zu Ende</div></div>
+      <div class="better">${r.winner===HUMAN?"Du gewinnst":"Der Gegner gewinnt"} ${r.gp}
+        &nbsp;·&nbsp; Punkte ${r.me} : ${r.opp}</div>
+      <div style="font-size:13.5px;color:var(--muted)">
+        ${r.stats.length} eigene Züge, davon ${bad} Fehler. Spring über die Zugliste
+        rechts an die teuren Stellen – oder geh zurück und spiel es anders.</div>`:"";
+    return;
+  }
+  const mv=mvs[replayIdx],s=replayRec.states[replayIdx];
+  if(mv.player===HUMAN&&mv.scores){showCoach(s,HUMAN,mv.m,mv.scores,false);return;}
+  const me=score(s,HUMAN),opp=score(s,BOT);
+  $("coachBody").innerHTML=`
+    <div class="verdict"><div class="vtitle">Der Gegner spielt</div>
+      <div class="vval">${moveText(s,mv.m)}</div></div>
+    <div class="count">Du ${me} Punkte · noch ${Math.max(0,66-me)} bis 66
+      <div class="meter"><i style="width:${Math.min(100,me/66*100)}%"></i></div>
+      Gegner ${opp} Punkte · noch ${Math.max(0,66-opp)}
+      <div class="meter opp"><i style="width:${Math.min(100,opp/66*100)}%"></i></div></div>`;
+}
+
+function renderMoveList(){
+  const box=$("movelist");box.innerHTML="";
+  const mis=$("mistakes");mis.innerHTML="";
+  const bad=replayRec.moves.map((mv,k)=>({k,v:moveVerdict(mv),mv}))
+      .filter(x=>x.v&&x.v.delta>GOOD).sort((a,b)=>b.v.delta-a.v.delta).slice(0,5);
+  if(bad.length){
+    const h=document.createElement("div");h.className="mistakes";
+    h.innerHTML=`<div style="font-size:12px;color:var(--muted);margin-bottom:4px">
+      Teuerste Züge – klick zum Hinspringen</div>`;
+    for(const x of bad){
+      const d=document.createElement("div");d.className="mv";
+      d.innerHTML=`<span class="n">${x.k+1}</span><span class="dot ${x.v.cls}"></span>
+        <span>${moveText(replayRec.states[x.k],x.mv.m)}</span>
+        <span class="d">−${x.v.delta.toFixed(2)}</span>`;
+      d.onclick=()=>gotoStep(x.k);
+      h.appendChild(d);
+    }
+    mis.appendChild(h);
+  }
+  replayRec.moves.forEach((mv,k)=>{
+    const v=moveVerdict(mv);
+    const d=document.createElement("div");
+    d.className="mv"+(k===replayIdx?" cur":"");
+    d.innerHTML=`<span class="n">${k+1}</span>
+      <span class="dot ${v?v.cls:""}" style="${v?"":"background:var(--line)"}"></span>
+      <span class="who">${mv.player===HUMAN?"du":"Gegner"}</span>
+      <span>${moveText(replayRec.states[k],mv.m)}</span>
+      ${v&&v.delta>GOOD?`<span class="d">−${v.delta.toFixed(2)}</span>`:""}`;
+    d.onclick=()=>gotoStep(k);
+    box.appendChild(d);
+  });
+  const end=document.createElement("div");
+  end.className="mv"+(replayIdx>=replayRec.moves.length?" cur":"");
+  end.innerHTML=`<span class="n">✓</span><span class="dot" style="background:var(--line)"></span>
+    <span class="who"></span><span>Ende des Blattes</span>`;
+  end.onclick=()=>gotoStep(replayRec.moves.length);
+  box.appendChild(end);
+}
+
+function branchHere(){
+  const s0=replayRec.states[replayIdx];
+  if(s0.over||s0.toMove!==HUMAN)return;
+  variantOf={handIdx:replayHandIdx,atIdx:replayIdx,orig:replayRec.result};
+  mode="variant";busy=false;liveSnap=null;
+  S=copyState(s0);
+  wonTricks=tricksFrom(replayRec,replayIdx);
+  tableCards=S.led>=0?[{card:S.led,player:S.leader}]:[];
+  rec={label:"Variante",states:[S],moves:[],result:null,
+       prior:tricksFrom(replayRec,replayIdx)};
+  G.stats=[];hintScores=null;
+  $("panelReplay").style.display="none";
+  logLine(`<b>Variante</b> ab Zug ${replayIdx+1} – zählt nicht fürs Bummerl`);
+  render();
+}
+
+function renderReplayBar(){
+  const bar=$("replaybar");
+  if(mode==="play"){bar.style.display="none";bar.innerHTML="";return;}
+  bar.style.display="";bar.innerHTML="";
+  const add=(label,fn,dis,cls)=>{
+    const b=document.createElement("button");
+    b.textContent=label;
+    if(cls)b.className=cls;
+    if(dis)b.disabled=true;      // spiegelt sich als [disabled]-Attribut
+    else b.onclick=fn;
+    bar.appendChild(b);
+    return b;
+  };
+  const span=(txt,cls)=>{const s=document.createElement("span");s.className=cls||"pos";
+    s.textContent=txt;bar.appendChild(s);return s;};
+
+  if(mode==="variant"){
+    span("Variante","variantbadge");
+    span("zählt nicht fürs Bummerl");
+    add("Zurück zur Analyse",()=>{const v=variantOf;enterReplay(v.handIdx,v.atIdx);});
+    return;
+  }
+  if(G.hands.length>1){
+    const sel=document.createElement("select");
+    G.hands.forEach((h,i)=>{
+      const o=document.createElement("option");o.value=String(i);o.textContent=h.label;
+      if(i===replayHandIdx)o.selected=true;sel.appendChild(o);});
+    sel.onchange=e=>enterReplay(+e.target.value);
+    bar.appendChild(sel);
+  }
+  const n=replayRec.states.length-1;
+  add("⏮",()=>gotoStep(0),replayIdx===0);
+  add("◀",()=>gotoStep(replayIdx-1),replayIdx===0);
+  span(`Zug ${replayIdx} / ${n}`);
+  add("▶",()=>gotoStep(replayIdx+1),replayIdx>=n);
+  add("⏭",()=>gotoStep(n),replayIdx>=n);
+  add(revealOpp?"Gegnerkarten verbergen":"Gegnerkarten zeigen",()=>{revealOpp=!revealOpp;render();});
+  const cur=replayRec.states[replayIdx];
+  add("Ab hier anders spielen",branchHere,cur.over||cur.toMove!==HUMAN,"gold");
+  add("Analyse beenden",()=>exitReplay());
 }
 
 /* --- Bedienelemente ------------------------------------------------------ */
 $("btnNew").onclick=()=>newBummerl();
+$("btnReplay").onclick=()=>{if(G.hands.length)enterReplay(G.hands.length-1);
+  else alert("Noch kein Blatt zu Ende gespielt.");};
 $("level").onchange=e=>{G.level=e.target.value;};
 $("btnCoach").onclick=e=>{G.coachOn=!G.coachOn;e.target.textContent=G.coachOn?"An":"Aus";};
 $("btnHint").onclick=()=>{
-  if(busy||!S||S.over||S.toMove!==HUMAN)return;
+  if(!canAct())return;
   // Schon gerechnet? Dann NICHT neu würfeln – sonst tanzen die Zahlen bei
   // jedem Klick um den Stichprobenfehler herum.
   if(hintScores){render();return;}
@@ -1245,6 +1532,13 @@ function openDlg(title,html){$("dlgTitle").textContent=title;$("dlgBody").innerH
 $("btnRules").onclick=()=>openDlg("Regeln",RULES_HTML);
 $("btnStrat").onclick=()=>openDlg("Strategie",STRAT_HTML);
 document.addEventListener("keydown",e=>{
+  if(mode==="replay"){
+    if(e.key==="ArrowLeft")gotoStep(replayIdx-1);
+    if(e.key==="ArrowRight")gotoStep(replayIdx+1);
+    if(e.key==="Home")gotoStep(0);
+    if(e.key==="End")gotoStep(replayRec.states.length-1);
+    return;
+  }
   if(e.key==="h"&&!e.metaKey&&!e.ctrlKey)$("btnHint").click();
   if(e.key>="1"&&e.key<="9"){
     const els=[...document.querySelectorAll("#myHand .card.playable")];

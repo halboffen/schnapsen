@@ -183,16 +183,50 @@ den Stichrückgewinn aufheben.
 * [schnopsn.com – Wann darf/soll man zudrehen?](https://schnopsn.com/blog/donkeycat_faq_20210609200548920-05f3de212ff55af)
 * [gamerules.com – Schnapsen](https://gamerules.com/rules/schnapsen-%EF%BB%BF/)
 
+## Blätter nachspielen und analysieren
+
+Wenn ein Blatt zu Ende ist, führt der Knopf **Blatt analysieren** in einen
+Wiedergabemodus (jederzeit auch über **Analyse** in der Kopfzeile – ein laufendes
+Blatt wird dabei zwischengespeichert und beim Verlassen unverändert
+wiederhergestellt).
+
+* Zug für Zug vor und zurück, per Knopf, Pfeiltasten oder Klick in die Zugliste.
+* Zu jedem deiner Züge steht wieder genau die Analyse da, die du im Spiel gesehen
+  hast – dieselben Zahlen, derselbe Text. Sie wurde beim Spielen aufgezeichnet
+  und wird nicht neu gewürfelt.
+* Die **Zugliste** rechts markiert jeden Zug mit einem farbigen Punkt und stellt
+  die teuersten Züge nach oben. Ein Klick springt an die Stelle.
+* Die **Gegnerkarten liegen offen** – erst damit sieht man, warum ein Zug falsch
+  war. Abschaltbar, wenn du erst selbst überlegen willst.
+
+### Ab hier anders spielen
+
+An jeder Stelle, an der du am Zug warst, kannst du **abzweigen**: Du spielst von
+dort aus weiter, gegen dieselben Karten, die auch im Original lagen. Am Ende
+vergleicht das Programm beide Ausgänge:
+
+```
+Original: −1   ·   Variante: +2   (+3)
+```
+
+Varianten sind ausdrücklich Übung: Sie **verändern das Bummerl nicht**. Sie
+werden aber mit aufgezeichnet und lassen sich genauso analysieren, und über die
+Blattauswahl in der Leiste kommst du zwischen Original und Varianten hin und her.
+
+Der Trainer rechnet in einer Variante ganz normal – also weiterhin nur mit dem,
+was *du* an dieser Stelle wissen konntest, nicht mit den offengelegten Karten.
+
 ## Bedienung im Browser
 
 Karte anklicken zum Spielen; nicht erlaubte Karten sind ausgegraut. Ansage,
 Bubentausch und Zudrehen liegen als Knöpfe über der Hand – nach einem Klick auf
 eine Ansage leuchten nur noch König und Dame dieser Farbe. Tastatur: `1`–`9`
-für Karten, `h` für den Hinweis.
+für Karten, `h` für den Hinweis; in der Analyse `←`/`→` zum Steppen und
+`Pos1`/`Ende` für Anfang und Schluss.
 
 Rechts: Trainer, **deine Stiche** (mit deiner Karte hervorgehoben und laufender
-Summe), Merkhilfe und Verlauf. Die drei unteren Panels lassen sich über ihre
-Überschrift ein- und ausklappen. Die eigenen Stiche nachzusehen ist beim
+Summe), Merkhilfe und Verlauf; in der Analyse zusätzlich die Zugliste. Die
+Panels lassen sich über ihre Überschrift ein- und ausklappen. Die eigenen Stiche nachzusehen ist beim
 normalen Schnapsen erlaubt; nur die Turniervariante verbietet es.
 
 ## Aufbau
