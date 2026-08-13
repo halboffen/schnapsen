@@ -12,7 +12,9 @@ Es gibt zwei Varianten mit derselben Engine und denselben Hinweisen:
 Eine einzige, in sich geschlossene HTML-Datei: keine Bibliotheken, kein Build,
 kein Server, keine Netzwerkzugriffe, keine Cookies, kein Tracking. Spiellogik,
 Gegner und Trainer laufen komplett im Browser – die Seite funktioniert auch
-offline, wenn man die Datei einmal gespeichert hat.
+offline, wenn man die Datei einmal gespeichert hat. Auch das Favicon steckt als
+`data:`-URI in der Datei (SVG, mit PNG-Fallback für Safari und einem
+Apple-Touch-Icon fürs Handy-Homescreen), es bleibt also bei null Requests.
 
 ## Terminal – `play.py`
 
