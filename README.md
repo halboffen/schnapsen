@@ -222,6 +222,10 @@ was *du* an dieser Stelle wissen konntest, nicht mit den offengelegten Karten.
 
 ## Bedienung im Browser
 
+Die Seite bringt ihre eigene Anleitung mit: der Knopf **Hilfe** in der Kopfzeile
+beschreibt die komplette Bedienung und erklärt im Anhang, wie die Bewertung
+zustande kommt. Kurzfassung:
+
 Karte anklicken zum Spielen; nicht erlaubte Karten sind ausgegraut. Ansage,
 Bubentausch und Zudrehen liegen als Knöpfe über der Hand – nach einem Klick auf
 eine Ansage leuchten nur noch König und Dame dieser Farbe. Tastatur: `1`–`9`

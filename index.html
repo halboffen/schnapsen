@@ -292,6 +292,11 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
 .dlg-body h3:first-child{margin-top:0}
 .dlg-body ul{margin:6px 0;padding-left:20px}
 .dlg-body li{margin:5px 0}
+.dlg-body ol{margin:6px 0;padding-left:20px}
+.dlg-body ol li{margin:6px 0}
+.kbd{display:inline-block;border:1px solid var(--line);border-bottom-width:2px;
+  border-radius:5px;padding:0 5px;font-size:12px;background:var(--panel2);
+  font-family:ui-monospace,monospace;white-space:nowrap}
 .dlg-body table{border-collapse:collapse;width:100%;font-size:13px;margin:8px 0}
 .dlg-body td{padding:3px 6px;border-bottom:1px solid var(--line)}
 .result{text-align:center;padding:22px 16px}
@@ -327,6 +332,7 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
     <option value="normal" selected>normal</option>
     <option value="schwer">schwer</option>
   </select>
+  <button class="btn" id="btnHelp">Hilfe</button>
   <button class="btn" id="btnRules">Regeln</button>
   <button class="btn" id="btnStrat">Strategie</button>
   <button class="btn" id="btnReplay" title="Letztes Blatt Zug für Zug analysieren">Analyse</button>
@@ -837,7 +843,7 @@ function tipsFor(s,p,move,best,scores){
 /* ==========================================================================
    5. Oberfläche
    ========================================================================== */
-const VERSION="1.2.5";
+const VERSION="1.3.0";
 const HUMAN=0,BOT=1;
 const $=id=>document.getElementById(id);
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -1527,6 +1533,154 @@ $("btnHint").onclick=()=>{
   },20);
 };
 
+const HELP_HTML=`
+<h3>Worum es geht</h3>
+<p>Du spielst ein Bummerl gegen den Computer. Nach <b>jedem</b> deiner Züge sagt
+dir der Trainer, wie gut er war, was besser gewesen wäre und warum. Am Ende
+eines Blattes kannst du es Zug für Zug nachspielen und ab jeder Stelle anders
+weiterspielen.</p>
+<p>Die Seite speichert nichts und sendet nichts. Ein Neuladen beginnt von vorn.</p>
+
+<h3>Am Tisch</h3>
+<ul>
+<li><b>Karte spielen:</b> anklicken. Nicht erlaubte Karten sind ausgegraut und
+wackeln beim Klick. Über die Tasten <span class="kbd">1</span>–<span class="kbd">9</span> geht es auch.</li>
+<li><b>Ansage 20/40:</b> Knopf über der Hand antippen – danach leuchten nur noch
+König und Dame dieser Farbe, und du spielst eine der beiden aus. „Abbrechen"
+nimmt die Ansage zurück.</li>
+<li><b>Trumpf-Buben tauschen</b> und <b>Zudrehen:</b> ebenfalls Knöpfe über der
+Hand. Zudrehen steht bewusst ganz rechts – es ist die riskante Entscheidung.</li>
+<li><b>Talon:</b> rechts in der Mitte. Die quer liegende Karte ist der offene
+Trumpf; nach dem Zudrehen erscheint dort „ZU".</li>
+</ul>
+
+<h3>Trainer</h3>
+<p>Nach jedem deiner Züge: ein Urteil (<b>gut</b>, <b>geht besser</b>,
+<b>Fehler</b>), der bessere Zug samt Abstand, ein bis drei konkrete Hinweise und
+der Punktestand mit dem Weg zu 66.</p>
+<p><b>Hinweis anzeigen</b> rechnet <i>vor</i> deinem Zug und schreibt eine Zahl
+auf jede spielbare Karte; der beste Zug wird gold markiert. Sind mehrere Züge
+gleich gut, werden alle markiert – die Zahlen sind Schätzungen, und so zu tun,
+als gäbe es genau einen besten Zug, wäre gelogen. Ein zweiter Klick rechnet
+nicht neu, du bekommst dieselben Zahlen.</p>
+<p><b>An/Aus</b> schaltet den Kommentar ab, wenn du ungestört spielen willst.</p>
+
+<h3>Die Panels rechts</h3>
+<ul>
+<li><b>Deine Stiche:</b> jeder gewonnene Stich mit beiden Karten, deine grün
+umrandet, dazu Ansagen und die laufende Summe.</li>
+<li><b>Merkhilfe:</b> die <b>gefallenen</b> Karten nach Farben, Trumpf goldgerahmt.
+Bewusst nicht die übrigen – was noch umläuft, rechnest du selbst aus, wie am
+echten Tisch.</li>
+<li><b>Verlauf:</b> Protokoll des laufenden Blattes.</li>
+</ul>
+<p>Die Panels lassen sich über ihre Überschrift ein- und ausklappen.</p>
+
+<h3>Blatt analysieren</h3>
+<p>Am Ende eines Blattes über <b>Blatt analysieren</b>, jederzeit über
+<b>Analyse</b> in der Kopfzeile. Ein laufendes Blatt wird dabei zwischengespeichert
+und beim Verlassen unverändert wiederhergestellt.</p>
+<ul>
+<li>Vor und zurück mit den Knöpfen, mit <span class="kbd">←</span>
+<span class="kbd">→</span> oder per Klick in die Zugliste;
+<span class="kbd">Pos1</span> und <span class="kbd">Ende</span> springen an Anfang und Schluss.</li>
+<li>Die <b>Gegnerkarten liegen offen</b> – erst damit sieht man, warum ein Zug
+falsch war. Abschaltbar, wenn du erst selbst überlegen willst.</li>
+<li>Die <b>Zugliste</b> markiert jeden deiner Züge: grün gut, gelb ungenau, rot
+Fehler, blass für Züge des Gegners. Oben stehen die teuersten Züge.</li>
+<li><b>Alle Züge zeigen</b> listet für die aktuelle Stellung sämtliche
+Möglichkeiten mit ihrer damaligen Bewertung auf, nach Wert sortiert. Es sind
+exakt die Zahlen, die im Spiel galten – nichts wird neu gerechnet.</li>
+</ul>
+
+<h3>Ab hier anders spielen</h3>
+<p>An jeder Stelle, an der du am Zug warst. Du spielst gegen dieselben Karten
+weiter, die auch im Original lagen. Am Ende vergleicht das Programm beide
+Ausgänge. <b>Varianten verändern das Bummerl nicht</b> – sie sind Übung. Sie
+werden trotzdem aufgezeichnet und lassen sich genauso analysieren; über die
+Blattauswahl in der Leiste kommst du zwischen Original und Varianten hin und her.</p>
+<p>Der Trainer rechnet auch in einer Variante nur mit dem, was <i>du</i> an
+dieser Stelle wissen konntest – nicht mit den offengelegten Karten.</p>
+
+<h3>Kopfzeile</h3>
+<ul>
+<li><b>Bummerl:</b> beide starten bei 7 und zählen herunter; wer bei 0 ist, gewinnt.</li>
+<li><b>Spielstärke:</b> <i>leicht</i> spielt nach reiner Faustregel, <i>normal</i>
+rechnet 60 Simulationen je Zug, <i>schwer</i> 200. Der Trainer rechnet immer mit
+mindestens 300 und ist damit stärker als jeder Gegner.</li>
+</ul>
+
+<h3>Tastatur</h3>
+<table>
+<tr><td><span class="kbd">1</span>–<span class="kbd">9</span></td><td>Karte spielen</td></tr>
+<tr><td><span class="kbd">h</span></td><td>Hinweis anzeigen</td></tr>
+<tr><td><span class="kbd">←</span> <span class="kbd">→</span></td><td>in der Analyse einen Zug zurück/vor</td></tr>
+<tr><td><span class="kbd">Pos1</span> <span class="kbd">Ende</span></td><td>in der Analyse an Anfang/Schluss</td></tr>
+</table>
+
+<h3>Anhang: Wie die Bewertung entsteht</h3>
+<p>Die Zahl an einem Zug ist der <b>erwartete Bummerl-Ertrag</b>: von
+<b>+3</b> (Blatt schwarz gewonnen) bis <b>−3</b> (schwarz verloren). Das sind
+Bummerl-Punkte, nicht die Kartenpunkte bis 66. Es ist ein Mittelwert, kein
+Versprechen: +1.00 kann „gewinnt fast immer 1" heißen oder „gewinnt oft 2 und
+verliert manchmal 1". Wichtig ist selten die absolute Zahl, sondern der
+<b>Abstand zwischen zwei Zügen</b> – er ist genau das, was ein Fehler kostet.</p>
+
+<p>Schnapsen ist ein Spiel mit unvollständiger Information: Du kennst weder die
+Gegnerhand noch die Reihenfolge des Talons. Es gibt also nicht einen Spielbaum,
+sondern für jede mögliche Kartenverteilung einen anderen. Das Programm geht
+deshalb so vor:</p>
+<ol>
+<li><b>Eine Welt würfeln.</b> Alle für dich unbekannten Karten werden gemischt
+und auf Gegnerhand und Talon verteilt. „Unbekannt" heißt streng: abgezogen
+werden deine Handkarten, alle gefallenen Karten, die offene Trumpfkarte – und
+alles, was du sicher weißt. Hat der Gegner den Trumpf-Buben getauscht, liegt die
+alte Trumpfkarte nachweislich bei ihm und wird in jeder Welt dorthin gelegt statt
+gemischt. Dasselbe gilt für die zweite Karte einer angesagten Hochzeit und für
+die letzte Talonkarte.</li>
+<li><b>Die Welt zu Ende spielen.</b> Beide Seiten spielen nach einer schnellen
+Faustregel: Buben tauschen, Ansagen sofort melden, teure Stiche nehmen, sonst
+die billigste Karte abwerfen, früh keinen Trumpf ausspielen.</li>
+<li><b>Das Endspiel exakt lösen.</b> Sobald zugedreht ist oder der Talon leer und
+höchstens fünf Karten je Hand liegen, hört das Schätzen auf: Der Rest wird per
+Alpha-Beta-Suche vollständig durchgerechnet. Deshalb sind die Zahlen im Endspiel
+scharf.</li>
+<li><b>Mitteln.</b> Jede Welt endet mit einem Ausgang in Bummerl-Punkten. Der
+Durchschnitt ist die angezeigte Zahl.</li>
+</ol>
+<p>In einer Eröffnungsstellung sind das rund <b>1800 komplett zu Ende gespielte
+Blätter</b> pro Hinweis, in etwa einer Zehntelsekunde.</p>
+
+<h3>Zwei Details, die den Unterschied machen</h3>
+<p><b>Dieselben Welten für alle Züge.</b> Die 300 Verteilungen werden einmal
+gewürfelt und dann jeder Zug in denselben durchgespielt. Deshalb ist der Abstand
+zwischen zwei Zügen deutlich verlässlicher als die absolute Zahl – beide sahen
+exakt dieselben Karten.</p>
+<p><b>Wenn nichts mehr unbekannt ist, wird nicht gewürfelt.</b> Ist der Talon
+leer, ergibt sich die Gegnerhand zwingend aus dem, was du nicht hast und nicht
+gesehen hast. Dann läuft eine einzige Welt, exakt gelöst – die Zahl ist dort
+keine Schätzung mehr.</p>
+
+<h3>Wo das Verfahren unsauber ist</h3>
+<p>Innerhalb einer gewürfelten Welt spielen beide Seiten mit offenen Karten. Der
+simulierte Gegner weiß also Dinge, die er in Wirklichkeit nicht weiß. Das ist die
+bekannte Schwäche dieses Ansatzes: Er überschätzt, wie gut sich Information
+ausnutzen lässt, weil er in jeder Welt anders entscheiden darf, obwohl du in
+Wirklichkeit <i>eine</i> Entscheidung für alle Welten treffen musst.</p>
+<p>Und der Mittelteil ist nur so gut wie die Faustregel aus Schritt 2. Sie ist
+vernünftig, aber nicht optimal – exakt wird erst das Endspiel.</p>
+<p>Die Streuung der Schätzung liegt bei etwa <b>±0,07</b> Bummerl-Punkten.
+Unterschiede unterhalb von 0,10 behandelt das Programm deshalb als
+gleichwertig.</p>
+
+<h3>Die Hinweise in Worten</h3>
+<p>Die Sätze des Trainers stammen <i>nicht</i> aus der Suche. Sie sind ein
+getrennter Satz von Regelprüfungen aus den gängigen Strategieleitfäden – Buben
+tauschen, Ansage nicht zerreißen, früh keinen Trumpf ausspielen, blanke Zehn
+schützen, im Endspiel Trümpfe ziehen, und so weiter. Die Zahl sagt dir
+<i>wie viel</i>, die Regel sagt dir <i>warum</i>.</p>
+`;
+
 const RULES_HTML=`
 <h3>Ziel</h3>
 <p>66 Punkte aus Stichen und Ansagen. Wer sie erreicht, gewinnt das Blatt sofort
@@ -1621,6 +1775,7 @@ zu Ende gespielt und das Endspiel exakt gelöst. Die Zahl ist der erwartete
 <b>Bummerl-Ertrag</b> von +3 bis −3 – nicht die Punkte.</p>`;
 
 function openDlg(title,html){$("dlgTitle").textContent=title;$("dlgBody").innerHTML=html;$("dlg").showModal();}
+$("btnHelp").onclick=()=>openDlg("Hilfe",HELP_HTML);
 $("btnRules").onclick=()=>openDlg("Regeln",RULES_HTML);
 $("btnStrat").onclick=()=>openDlg("Strategie",STRAT_HTML);
 document.addEventListener("keydown",e=>{
