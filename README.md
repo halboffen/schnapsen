@@ -194,7 +194,8 @@ wiederhergestellt).
 * Zu jedem deiner Züge steht wieder genau die Analyse da, die du im Spiel gesehen
   hast – dieselben Zahlen, derselbe Text. Sie wurde beim Spielen aufgezeichnet
   und wird nicht neu gewürfelt.
-* Die **Zugliste** rechts markiert jeden Zug mit einem farbigen Punkt und stellt
+* Die **Zugliste** rechts markiert jeden deiner Züge mit einem farbigen Punkt –
+  grün gut, gelb ungenau, rot Fehler, blass für Züge des Gegners – und stellt
   die teuersten Züge nach oben. Ein Klick springt an die Stelle.
 * **Alle Züge zeigen** listet für jede deiner Stellungen sämtliche Möglichkeiten
   mit ihrer damaligen Bewertung auf, nach Wert sortiert, dein gespielter Zug

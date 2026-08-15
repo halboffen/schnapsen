@@ -233,8 +233,11 @@ aside{display:flex;flex-direction:column;gap:12px;position:sticky;top:64px}
 .mv.cur{background:var(--panel2);box-shadow:inset 0 0 0 1px var(--gold)}
 .mv .n{color:var(--muted);min-width:1.8em;font-variant-numeric:tabular-nums}
 .mv .who{color:var(--muted);min-width:3.8em}
-.mv .dot{width:8px;height:8px;border-radius:50%;flex:0 0 auto}
-.mv .dot.good{background:var(--good)}.mv .dot.mid{background:var(--warn)}.mv .dot.bad{background:var(--bad)}
+.dot{width:8px;height:8px;border-radius:50%;flex:0 0 auto;background:var(--line)}
+.dot.good{background:var(--good)}.dot.mid{background:var(--warn)}.dot.bad{background:var(--bad)}
+.mvlegend{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;padding-top:8px;
+  border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
+.mvlegend span{display:flex;align-items:center;gap:5px}
 .mv .d{margin-left:auto;color:var(--muted);font-variant-numeric:tabular-nums;font-size:12px}
 .ranking{margin-top:10px;border-top:1px solid var(--line);padding-top:8px}
 .ranking .hd{font-size:12px;color:var(--muted);margin-bottom:4px}
@@ -300,8 +303,10 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
   display:none;align-items:center;gap:6px;
 }
 .thinking.on{display:flex}
-.dot{width:6px;height:6px;border-radius:50%;background:#fff;animation:blink 1s infinite}
-.dot:nth-child(2){animation-delay:.2s}.dot:nth-child(3){animation-delay:.4s}
+.thinking .dot{width:6px;height:6px;border-radius:50%;background:#fff;
+  animation:blink 1s infinite}
+.thinking .dot:nth-child(3){animation-delay:.2s}
+.thinking .dot:nth-child(4){animation-delay:.4s}
 @keyframes blink{0%,100%{opacity:.25}50%{opacity:1}}
 </style>
 </head>
@@ -373,6 +378,12 @@ dialog::backdrop{background:rgba(0,0,0,.55)}
       <div class="pbody">
         <div id="mistakes"></div>
         <div class="movelist" id="movelist"></div>
+        <div class="mvlegend">
+          <span><i class="dot good"></i> gut</span>
+          <span><i class="dot mid"></i> ungenau</span>
+          <span><i class="dot bad"></i> Fehler</span>
+          <span><i class="dot"></i> Gegner</span>
+        </div>
       </div>
     </div>
 
@@ -826,7 +837,7 @@ function tipsFor(s,p,move,best,scores){
 /* ==========================================================================
    5. Oberfläche
    ========================================================================== */
-const VERSION="1.2.4";
+const VERSION="1.2.5";
 const HUMAN=0,BOT=1;
 const $=id=>document.getElementById(id);
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
