@@ -196,6 +196,9 @@ wiederhergestellt).
   und wird nicht neu gewürfelt.
 * Die **Zugliste** rechts markiert jeden Zug mit einem farbigen Punkt und stellt
   die teuersten Züge nach oben. Ein Klick springt an die Stelle.
+* **Alle Züge zeigen** listet für jede deiner Stellungen sämtliche Möglichkeiten
+  mit ihrer damaligen Bewertung auf, nach Wert sortiert, dein gespielter Zug
+  markiert – und schreibt die Zahlen zusätzlich auf die Karten.
 * Die **Gegnerkarten liegen offen** – erst damit sieht man, warum ein Zug falsch
   war. Abschaltbar, wenn du erst selbst überlegen willst.
 
