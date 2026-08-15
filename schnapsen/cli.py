@@ -55,7 +55,7 @@ Befehle
   <Zahl>   Zug aus der Liste spielen
   AH, 10K  Karte direkt über ihren Code spielen (Rang + H/K/P/T)
   h        Hinweis: Bewertung aller Züge, bevor du spielst
-  m        Merkhilfe: welche Karten sind noch unbekannt?
+  m        Merkhilfe: welche Karten sind schon gefallen?
   r        Kurzregeln
   s        Strategie-Spickzettel
   q        Beenden
@@ -93,8 +93,8 @@ Strategie-Spickzettel
    • Zähle in jedem Stich mit: eigene Punkte, gegnerische Punkte, und wie weit
      beide von 66 entfernt sind. 33 ist die zweite wichtige Marke – ab 33 Punkten
      verliert der Gegner nur noch 1 statt 2 Bummerl-Punkte.
-   • Merke dir die noch unbekannten Karten – zuerst die Trümpfe, dann Asse und
-     Zehner. Pro Farbe sind es nie mehr als vier.
+   • Merke dir, was gefallen ist – zuerst die Trümpfe, dann Asse und Zehner.
+     Daraus ergibt sich, was noch umläuft. Pro Farbe sind es nur fünf Karten.
 
   ANSAGEN UND TAUSCH
    • Den Trumpf-Buben zu tauschen ist praktisch nie falsch – sofort machen.

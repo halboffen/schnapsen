@@ -42,7 +42,7 @@ python3 play.py --no-color
 | `1`, `2`, … | Zug aus der Liste spielen |
 | `AH`, `10K`, `KP` | Karte direkt über den Code spielen |
 | `h` | Hinweis **vor** dem Zug: Bewertung aller Züge |
-| `m` | Merkhilfe: welche Karten sind noch unbekannt? |
+| `m` | Merkhilfe: welche Karten sind schon gefallen? |
 | `s` | Strategie-Spickzettel |
 | `r` | Kurzregeln |
 | `q` | Beenden (mit Bilanz) |
@@ -147,8 +147,8 @@ zudrehen, und Ansagen erst nach dem ersten eigenen Stich machen.
 Kurzfassung dessen, was der Trainer prüft (ausführlich im Spiel über `s`):
 
 **Zählen.** 66 ist das Ziel, 33 die zweitwichtigste Marke – ab 33 Punkten verliert
-der Gegner nur noch 1 statt 2 Bummerl-Punkte. Merke dir die unbekannten Karten in dieser
-Reihenfolge: Trümpfe, Asse, Zehner.
+der Gegner nur noch 1 statt 2 Bummerl-Punkte. Merke dir, was gefallen ist, in dieser
+Reihenfolge: Trümpfe, Asse, Zehner – daraus ergibt sich, was noch umläuft.
 
 **Tauschen und ansagen.** Den Trumpf-Buben zu tauschen ist praktisch nie falsch.
 Ansagen so früh wie möglich melden – wer wartet, verliert sie oft ganz. König
@@ -225,7 +225,8 @@ für Karten, `h` für den Hinweis; in der Analyse `←`/`→` zum Steppen und
 `Pos1`/`Ende` für Anfang und Schluss.
 
 Rechts: Trainer, **deine Stiche** (mit deiner Karte hervorgehoben und laufender
-Summe), Merkhilfe und Verlauf; in der Analyse zusätzlich die Zugliste. Die
+Summe), Merkhilfe (die **gefallenen** Karten – das ist es, was man sich am Tisch
+merkt) und Verlauf; in der Analyse zusätzlich die Zugliste. Die
 Panels lassen sich über ihre Überschrift ein- und ausklappen. Die eigenen Stiche nachzusehen ist beim
 normalen Schnapsen erlaubt; nur die Turniervariante verbietet es.
 

@@ -190,13 +190,17 @@ def counting_line(s: State, p: int) -> str:
 
 
 def memory_line(s: State, p: int) -> str:
-    unseen = unseen_cards(s, p)
-    high = [c for c in unseen if c.rank in ("A", "10")]
-    tr = [c for c in unseen if c.suit == s.trump]
-    parts = []
-    parts.append("Unbekannt: " + (" ".join(str(c) for c in sorted(unseen, key=lambda x: (x.suit, -x.order))) or "–"))
-    parts.append("davon Trumpf: " + (" ".join(str(c) for c in tr) or "keiner"))
-    parts.append("davon A/10: " + (" ".join(str(c) for c in high) or "keine"))
+    """Gefallene Karten – das merkt man sich am Tisch, nicht den Rest."""
+    fallen = sorted(s.played, key=lambda c: (c.suit, -c.order))
+    if not fallen:
+        return "Noch keine Karte gefallen."
+    tr = [c for c in fallen if c.suit == s.trump]
+    high = [c for c in fallen if c.rank in ("A", "10")]
+    parts = [
+        "Gefallen: " + " ".join(str(c) for c in fallen),
+        f"davon Trumpf: {' '.join(str(c) for c in tr) or 'keiner'}",
+        f"davon A/10: {' '.join(str(c) for c in high) or 'keine'}",
+    ]
     return " · ".join(parts)
 
 
