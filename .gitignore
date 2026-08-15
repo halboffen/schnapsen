@@ -3,3 +3,4 @@ __pycache__/
 *.pkl
 .DS_Store
 HANDOVER.md
+.claude/launch.json
