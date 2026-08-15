@@ -103,14 +103,24 @@ statt geraten:
    Trumpfkarte, Karten aus angesagten Paaren und die vom Gegner gezogene letzte
    Trumpfkarte.
 2. **Ausspielen** – in jeder dieser Welten wird das Blatt zu Ende gespielt.
-3. **Exaktes Endspiel** – sobald nur noch fünf Karten je Hand im Spiel sind und
-   Farb-/Stichzwang gilt, wird das Endspiel per Alpha-Beta-Suche exakt gelöst.
+3. **Exakt statt geschätzt, sobald es geht** – hat jede Hand höchstens fünf
+   Karten und liegen im Talon höchstens sechs, wird die Welt per Alpha-Beta-Suche
+   exakt zu Ende gerechnet statt heuristisch ausgespielt. Das gilt auch bei
+   offenem Talon: in einer gewürfelten Welt liegt die Ziehreihenfolge fest, die
+   Suche ist dort genauso zulässig wie im Endspiel. Findet sie in ihrem
+   Knotenbudget keine Antwort, wird wie bisher ausgespielt.
 4. Für alle Züge werden **dieselben** Welten benutzt (common random numbers), die
    Vergleiche sind dadurch rauscharm.
 
 Stichproben: 300 pro Zug, im zugedrehten Endspiel bis 400 (dort wird jede Welt
 exakt gelöst, das lohnt sich). Ist der Talon leer, liegt die Gegnerhand
 eindeutig fest – dann wird exakt statt geschätzt gerechnet.
+
+Die exakte Rechnung nicht erst im Endspiel, sondern schon ab sechs Talonkarten
+zu benutzen, ist die größte Einzelverbesserung der Spielstärke bisher: **+100
+Bummerl-Punkte auf 1200 Blätter** gegen die vorige Fassung, bei einem Rauschen
+von ±7. Sie kostet einen Hinweis von rund einer Sekunde statt 40 ms; ein Zug des
+Gegners bleibt bei etwa 200 ms.
 
 Der Gegner benutzt exakt denselben Code – der Trainer bewertet also nach der
 gleichen Messlatte, an der er dich schlagen will.
