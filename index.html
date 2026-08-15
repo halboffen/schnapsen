@@ -15,6 +15,7 @@
   --panel:#fffdf8; --panel2:#f0ece1;
   --felt1:#2c7156; --felt2:#14402f; --felt-line:rgba(255,255,255,.09);
   --gold:#c9a227; --good:#2f8f4e; --warn:#c08a1e; --bad:#c0442f;
+  --suit-red:#c02b2b;
   --shadow:0 2px 6px rgba(0,0,0,.14), 0 10px 24px rgba(0,0,0,.10);
   --radius:14px;
   --card-w:64px; --card-h:92px;
@@ -25,14 +26,17 @@
     --panel:#1d2024; --panel2:#23272c;
     --felt1:#23604a; --felt2:#0d2b20;
     --shadow:0 2px 6px rgba(0,0,0,.45), 0 12px 28px rgba(0,0,0,.35);
+    --suit-red:#ff7b72;
   }
 }
 :root[data-theme="light"]{
+  --suit-red:#c02b2b;
   --bg:#f4f1ea; --fg:#1c1a17; --muted:#6b6459; --line:#ddd6c8;
   --panel:#fffdf8; --panel2:#f0ece1; --felt1:#2c7156; --felt2:#14402f;
   --shadow:0 2px 6px rgba(0,0,0,.14), 0 10px 24px rgba(0,0,0,.10);
 }
 :root[data-theme="dark"]{
+  --suit-red:#ff7b72;
   --bg:#15171a; --fg:#e9e6df; --muted:#9a958c; --line:#2c2f34;
   --panel:#1d2024; --panel2:#23272c; --felt1:#23604a; --felt2:#0d2b20;
   --shadow:0 2px 6px rgba(0,0,0,.45), 0 12px 28px rgba(0,0,0,.35);
@@ -257,7 +261,8 @@ aside{display:flex;flex-direction:column;gap:12px;position:sticky;top:64px}
   display:inline-block;padding:1px 5px;margin:0 2px 2px 0;border-radius:5px;
   background:var(--panel2);border:1px solid var(--line);font-variant-numeric:tabular-nums;
 }
-.mc.red{color:#c02b2b}
+.mc.red{color:var(--suit-red)}
+.rs{color:var(--suit-red)}
 .mc.tr{border-color:var(--gold)}
 .log{max-height:170px;overflow:auto;font-size:12.5px;color:var(--muted);line-height:1.7}
 .log b{color:var(--fg);font-weight:600}
@@ -405,6 +410,11 @@ const suitOf=c=>(c/5)|0, rankOf=c=>c%5;
 const valOf=c=>VAL[c%5], ordOf=c=>ORD[c%5];
 const mk=(r,s)=>s*5+r;
 const cardStr=c=>RANKS[c%5]+SUIT_SYM[(c/5)|0];
+/* Herz und Karo auch in Texten rot – sonst sind sie von Pik/Treff kaum zu
+   unterscheiden. Wird auf fertige HTML-Schnipsel angewendet. */
+const paintPanel=id=>{const el=$(id);el.innerHTML=paint(el.innerHTML);};
+const paint=s=>String(s).replace(/♥/g,'<span class="rs">♥</span>')
+                        .replace(/♦/g,'<span class="rs">♦</span>');
 const bit=c=>1<<c;
 const ALL_MASK=(1<<20)-1;
 const beats=(ch,led,tr)=> suitOf(ch)===suitOf(led) ? ordOf(ch)>ordOf(led) : suitOf(ch)===tr;
@@ -808,7 +818,7 @@ function tipsFor(s,p,move,best,scores){
 /* ==========================================================================
    5. Oberfläche
    ========================================================================== */
-const VERSION="1.2.1";
+const VERSION="1.2.2";
 const HUMAN=0,BOT=1;
 const $=id=>document.getElementById(id);
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -939,7 +949,7 @@ function renderHandAndChips(){
   const ch=$("chips");ch.innerHTML="";
   const addChip=(label,cls,fn,mv)=>{
     const b=document.createElement("button");
-    b.className="chip"+(cls?" "+cls:"");b.textContent=label;
+    b.className="chip"+(cls?" "+cls:"");b.innerHTML=paint(label);
     b.onclick=fn;
     if(hintScores&&mv!==undefined&&hintScores.has(mv))
       b.appendChild(evBadge(hintScores.get(mv),isBest(mv)));
@@ -1069,7 +1079,7 @@ function renderStats(){
 
 function logLine(html){
   const l=$("log");
-  const d=document.createElement("div");d.innerHTML=html;
+  const d=document.createElement("div");d.innerHTML=paint(html);
   l.appendChild(d);l.scrollTop=l.scrollHeight;
 }
 
@@ -1107,6 +1117,7 @@ function showCoach(s,p,move,scores,record=true){
       Gegner ${opp} Punkte · noch ${Math.max(0,66-opp)}
       <div class="meter opp"><i style="width:${Math.min(100,opp/66*100)}%"></i></div>
     </div>`;
+  paintPanel("coachBody");
 }
 
 /* --- Spielfluss ---------------------------------------------------------- */
@@ -1186,6 +1197,7 @@ async function finishHand(){
         <button class="btn primary" id="btnAnaVar">Variante analysieren</button>
         <button class="btn" id="btnBackAna">Zurück zum Original</button>
       </div>`;
+    paintPanel("resultBody");
     $("dlgResult").showModal();
     $("btnAnaVar").onclick=()=>{$("dlgResult").close();enterReplay(myIdx);};
     $("btnBackAna").onclick=()=>{$("dlgResult").close();enterReplay(variantOf.handIdx,variantOf.atIdx);};
@@ -1217,6 +1229,7 @@ async function finishHand(){
       <button class="btn primary" id="btnAnalyse">Blatt analysieren</button>
       <button class="btn" id="btnNext">${over?"Neues Bummerl":"Nächstes Blatt"}</button>
     </div>`;
+  paintPanel("resultBody");
   $("dlgResult").showModal();
   $("btnAnalyse").onclick=()=>{$("dlgResult").close();enterReplay(handIdx);};
   $("btnNext").onclick=()=>{
@@ -1312,10 +1325,11 @@ function showReplayCoach(){
       <div style="font-size:13.5px;color:var(--muted)">
         ${r.stats.length} eigene Züge, davon ${bad} Fehler. Spring über die Zugliste
         rechts an die teuren Stellen – oder geh zurück und spiel es anders.</div>`:"";
+    paintPanel("coachBody");
     return;
   }
   const mv=mvs[replayIdx],s=replayRec.states[replayIdx];
-  if(mv.player===HUMAN&&mv.scores){showCoach(s,HUMAN,mv.m,mv.scores,false);return;}
+  if(mv.player===HUMAN&&mv.scores){showCoach(s,HUMAN,mv.m,mv.scores,false);return;}  // faerbt selbst
   const me=score(s,HUMAN),opp=score(s,BOT);
   $("coachBody").innerHTML=`
     <div class="verdict"><div class="vtitle">Der Gegner spielt</div>
@@ -1324,6 +1338,7 @@ function showReplayCoach(){
       <div class="meter"><i style="width:${Math.min(100,me/66*100)}%"></i></div>
       Gegner ${opp} Punkte · noch ${Math.max(0,66-opp)}
       <div class="meter opp"><i style="width:${Math.min(100,opp/66*100)}%"></i></div></div>`;
+  paintPanel("coachBody");
 }
 
 function renderMoveList(){
@@ -1337,9 +1352,9 @@ function renderMoveList(){
       Teuerste Züge – klick zum Hinspringen</div>`;
     for(const x of bad){
       const d=document.createElement("div");d.className="mv";
-      d.innerHTML=`<span class="n">${x.k+1}</span><span class="dot ${x.v.cls}"></span>
+      d.innerHTML=paint(`<span class="n">${x.k+1}</span><span class="dot ${x.v.cls}"></span>
         <span>${moveText(replayRec.states[x.k],x.mv.m)}</span>
-        <span class="d">−${x.v.delta.toFixed(2)}</span>`;
+        <span class="d">−${x.v.delta.toFixed(2)}</span>`);
       d.onclick=()=>gotoStep(x.k);
       h.appendChild(d);
     }
@@ -1349,11 +1364,11 @@ function renderMoveList(){
     const v=moveVerdict(mv);
     const d=document.createElement("div");
     d.className="mv"+(k===replayIdx?" cur":"");
-    d.innerHTML=`<span class="n">${k+1}</span>
+    d.innerHTML=paint(`<span class="n">${k+1}</span>
       <span class="dot ${v?v.cls:""}" style="${v?"":"background:var(--line)"}"></span>
       <span class="who">${mv.player===HUMAN?"du":"Gegner"}</span>
       <span>${moveText(replayRec.states[k],mv.m)}</span>
-      ${v&&v.delta>GOOD?`<span class="d">−${v.delta.toFixed(2)}</span>`:""}`;
+      ${v&&v.delta>GOOD?`<span class="d">−${v.delta.toFixed(2)}</span>`:""}`);
     d.onclick=()=>gotoStep(k);
     box.appendChild(d);
   });
