@@ -808,7 +808,7 @@ function tipsFor(s,p,move,best,scores){
 /* ==========================================================================
    5. Oberfläche
    ========================================================================== */
-const VERSION="1.2.0";
+const VERSION="1.2.1";
 const HUMAN=0,BOT=1;
 const $=id=>document.getElementById(id);
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -1074,6 +1074,10 @@ function logLine(html){
 }
 
 /* --- Trainer-Panel ------------------------------------------------------- */
+const COACH_IDLE=`<div style="color:var(--muted);font-size:13.5px">
+  Spiel eine Karte – hier steht dann, wie gut der Zug war und warum.</div>`;
+function resetCoach(){$("coachBody").innerHTML=COACH_IDLE;}
+
 function showCoach(s,p,move,scores,record=true){
   let best=null,bv=-Infinity;
   for(const [m,v] of scores)if(v>bv){bv=v;best=m;}
@@ -1225,6 +1229,7 @@ async function newHand(){
   G.dealer=1-G.dealer;
   G.handNo++;G.stats=[];hintScores=null;tableCards=[];wonTricks=[[],[]];
   mode="play";variantOf=null;
+  resetCoach();
   S=newDeal(G.dealer);
   rec={label:`Blatt ${G.handNo}`,states:[S],moves:[],result:null};
   $("log").innerHTML="";
@@ -1372,6 +1377,7 @@ function branchHere(){
        prior:tricksFrom(replayRec,replayIdx)};
   G.stats=[];hintScores=null;
   $("panelReplay").style.display="none";
+  resetCoach();
   logLine(`<b>Variante</b> ab Zug ${replayIdx+1} – zählt nicht fürs Bummerl`);
   render();
 }
